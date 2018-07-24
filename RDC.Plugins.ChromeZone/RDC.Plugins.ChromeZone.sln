@@ -1,0 +1,41 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27428.2011
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RDC.Plugins.ChromeZone", "RDC.Plugins.ChromeZone\RDC.Plugins.ChromeZone.csproj", "{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsFormsApp1", "..\..\WindowsFormsApp1\WindowsFormsApp1\WindowsFormsApp1.csproj", "{FB2919D2-17B5-4473-8518-BED301B74190}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Debug|x64 = Debug|x64
+		Release|Any CPU = Release|Any CPU
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Debug|x64.ActiveCfg = Debug|x64
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Debug|x64.Build.0 = Debug|x64
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|x64.ActiveCfg = Release|x64
+		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|x64.Build.0 = Release|x64
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Debug|x64.Build.0 = Debug|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Release|x64.ActiveCfg = Release|Any CPU
+		{FB2919D2-17B5-4473-8518-BED301B74190}.Release|x64.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DFCFB8EC-CD8C-40A9-BF30-720571CF328A}
+	EndGlobalSection
+EndGlobal
