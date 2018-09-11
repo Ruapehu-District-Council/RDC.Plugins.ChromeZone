@@ -83,6 +83,9 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="DisplayComponents.resx">
+      <DependentUpon>DisplayComponents.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Icons\arrow-left.png" />
     <EmbeddedResource Include="Icons\arrow-right.png" />
     <EmbeddedResource Include="Icons\refresh.png" />

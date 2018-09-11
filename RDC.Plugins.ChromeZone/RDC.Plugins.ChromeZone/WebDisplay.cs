@@ -8,6 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
 
 namespace RDC.Plugins.ChromeZone
 {
@@ -17,43 +18,117 @@ namespace RDC.Plugins.ChromeZone
 
         static string lib, browserExe, locales, res;
 
-        private string AddressURL = "";
+
+        private bool RefreshOnScreenChange = false;
+        private bool RefreshOnRecordLoad = true;
+        private bool BlockRefreshAfterNavigateAway = true;
+
+        private string CefsharpFolderLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\");
+
+        private bool HasNavigatedAway = false;
+
+        private string AddressURL = string.Empty;
 
         public WebDisplay()
         {
             InitializeComponent();
-            SetupBrowser();
 
             forwardButton.Click += forwardButton_Click;
             backButton.Click += backButton_Click;
             refreshButton.Click += toolStripButton1_Click;
             homeButton.Click += HomeButton_Click;
+
+            TryLoadSettings();
+
+            SetupBrowser();
+        }
+
+        private void TryLoadSettings()
+        {
+            string SettingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"ChromeZoneSettings.xml");
+
+            if (!File.Exists(SettingsFile))
+            {
+                return;
+            }
+
+            XmlDocument Document = new XmlDocument();
+            Document.LoadXml(File.ReadAllText(SettingsFile));
+
+            XmlNode RefreshOnScreenChangeNode = Document.SelectSingleNode("//Settings/RefreshOnScreenChange");
+            if (RefreshOnScreenChangeNode != null)
+            {
+                RefreshOnScreenChange = bool.Parse(RefreshOnScreenChangeNode.InnerText);
+            }
+
+            XmlNode RefreshOnRecordLoadNode = Document.SelectSingleNode("//Settings/RefreshOnRecordLoad");
+            if (RefreshOnRecordLoadNode != null)
+            {
+                RefreshOnRecordLoad = bool.Parse(RefreshOnRecordLoadNode.InnerText);
+            }
+
+            XmlNode BlockRefreshAfterNavigateAwayNode = Document.SelectSingleNode("//Settings/BlockRefreshAfterNavigateAway");
+            if (BlockRefreshAfterNavigateAwayNode != null)
+            {
+                BlockRefreshAfterNavigateAway = bool.Parse(BlockRefreshAfterNavigateAwayNode.InnerText);
+            }
+
+            XmlNode CefsharpFolderLocationNode = Document.SelectSingleNode("//Settings/CefsharpFolderLocation");
+            if (CefsharpFolderLocationNode != null)
+            {
+                CefsharpFolderLocation = CefsharpFolderLocationNode.InnerText;
+            }
+
+            XmlNode URLNode = Document.SelectSingleNode("//Settings/URL");
+            if (URLNode != null)
+            {
+                AddressURL = URLNode.InnerText;
+            }
         }
 
         private void HomeButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Load(BuildURL());
+            cBrowser.Load(CustomURL);
+            HasNavigatedAway = false;
         }
 
         //Ozone Initialize function
         public override void Initialize(string InitData)
         {
-            AddressURL = InitData;
-            cBrowser.Load(BuildURL());
+            if (AddressURL == string.Empty)
+            {
+                AddressURL = InitData;
+            }
+
+            LoadCustomPage();
         }
 
         public override void RecordRefresh(string InitData = "")
         {
-            cBrowser.Load(BuildURL());
+            if (RefreshOnRecordLoad)
+            {
+                LoadCustomPage();
+            }
+        }
+
+        public override void FunctionChanged(string FunctionID, string SubjectID)
+        {
+            ScreenID = FunctionID;
+            _Subject = SubjectID;
+
+            if (RefreshOnScreenChange)
+            {
+                LoadCustomPage();
+            }
         }
 
         //Setup the browser and it's dll directories 
         private void SetupBrowser()
         {
-            lib = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\libcef.dll");
-            browserExe = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\CefSharp.BrowserSubprocess.exe");
-            locales = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\locales\");
-            res = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\");
+            lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
+            browserExe = Path.Combine(CefsharpFolderLocation, @"CefSharp.BrowserSubprocess.exe");
+            locales = Path.Combine(CefsharpFolderLocation, @"locales\");
+            res = CefsharpFolderLocation;
 
             var libraryLoader = new CefLibraryHandle(lib);
 
@@ -71,11 +146,39 @@ namespace RDC.Plugins.ChromeZone
             toolStripContainer.ContentPanel.Controls.Add(cBrowser);
 
             cBrowser.AddressChanged += OnBrowserAddressChanged;
+            cBrowser.LoadingStateChanged += CBrowser_LoadingStateChanged;
+        }
+
+        private void CBrowser_LoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
+        {
+            this.InvokeOnUiThreadIfRequired(() =>
+            {
+                if (e.IsLoading)
+                {
+                    Waiting = true;
+                    ProgressIndicatorVisible = true;
+
+                }
+                else if (e.IsLoading == false)
+                {
+                    Waiting = false;
+                    ProgressIndicatorVisible = false;
+                }
+            });
         }
 
         private void OnBrowserAddressChanged(object sender, AddressChangedEventArgs args)
         {
             this.InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
+
+            if (args.Address.ToLower() != CustomURL.ToLower())
+            {
+                HasNavigatedAway = true;
+            }
+            else
+            {
+                HasNavigatedAway = false;
+            }
         }
 
         private void backButton_Click(object sender, EventArgs e)
@@ -93,15 +196,29 @@ namespace RDC.Plugins.ChromeZone
             cBrowser.Reload();
         }
 
-        public string BuildURL()
+        private void LoadCustomPage()
         {
-            string URL = AddressURL;
+            if (BlockRefreshAfterNavigateAway && HasNavigatedAway)
+            {
+                return;
+            }
 
-            URL = URL.Replace("@@BusinessObjectID@@", BusinessObjectID);
-            URL = URL.Replace("@@RecordID@@", RecordID);
-            URL = URL.Replace("@@ScreenID@@", ScreenID);
+            cBrowser.Load(CustomURL);
+        }
 
-            return URL;
+        private string CustomURL
+        {
+            get
+            {
+                string URL = AddressURL;
+
+                URL = URL.Replace("@@BusinessObjectID@@", BusinessObjectID);
+                URL = URL.Replace("@@RecordID@@", RecordID);
+                URL = URL.Replace("@@ScreenID@@", ScreenID);
+                URL = URL.Replace("@@Subject@@", _Subject);
+
+                return URL;
+            }
         }
 
         private string BusinessObjectID
@@ -128,16 +245,7 @@ namespace RDC.Plugins.ChromeZone
             }
         }
 
-        private string ScreenID
-        {
-            get
-            {
-                if (this.CommonBlock != null && this.CommonBlock.CurrentRecord != null)
-                {
-                    return this.CommonBlock.Function;
-                }
-                return "";
-            }
-        }
+        private string ScreenID { get; set; }
+        private string _Subject { get; set; }
     }
 }
