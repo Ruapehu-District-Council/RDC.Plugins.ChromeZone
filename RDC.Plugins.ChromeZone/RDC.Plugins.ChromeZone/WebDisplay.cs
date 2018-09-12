@@ -29,6 +29,9 @@ namespace RDC.Plugins.ChromeZone
 
         private string AddressURL = string.Empty;
 
+        private string ScreenID;
+        private string _Subject;
+
         public WebDisplay()
         {
             InitializeComponent();
@@ -52,44 +55,72 @@ namespace RDC.Plugins.ChromeZone
                 return;
             }
 
-            XmlDocument Document = new XmlDocument();
-            Document.LoadXml(File.ReadAllText(SettingsFile));
-
-            XmlNode RefreshOnScreenChangeNode = Document.SelectSingleNode("//Settings/RefreshOnScreenChange");
-            if (RefreshOnScreenChangeNode != null)
+            try
             {
-                RefreshOnScreenChange = bool.Parse(RefreshOnScreenChangeNode.InnerText);
+                XmlDocument Document = new XmlDocument();
+                Document.LoadXml(File.ReadAllText(SettingsFile));
+
+                XmlNode RefreshOnScreenChangeNode = Document.SelectSingleNode("//Settings/RefreshOnScreenChange");
+                if (RefreshOnScreenChangeNode != null)
+                {
+                    RefreshOnScreenChange = bool.Parse(RefreshOnScreenChangeNode.InnerText);
+                }
+
+                XmlNode RefreshOnRecordLoadNode = Document.SelectSingleNode("//Settings/RefreshOnRecordLoad");
+                if (RefreshOnRecordLoadNode != null)
+                {
+                    RefreshOnRecordLoad = bool.Parse(RefreshOnRecordLoadNode.InnerText);
+                }
+
+                XmlNode BlockRefreshAfterNavigateAwayNode = Document.SelectSingleNode("//Settings/BlockRefreshAfterNavigateAway");
+                if (BlockRefreshAfterNavigateAwayNode != null)
+                {
+                    BlockRefreshAfterNavigateAway = bool.Parse(BlockRefreshAfterNavigateAwayNode.InnerText);
+                }
+
+                XmlNode CefsharpFolderLocationNode = Document.SelectSingleNode("//Settings/CefsharpFolderLocation");
+                if (CefsharpFolderLocationNode != null)
+                {
+                    CefsharpFolderLocation = CefsharpFolderLocationNode.InnerText;
+                }
+
+                XmlNode URLNode = Document.SelectSingleNode("//Settings/URL");
+                if (URLNode != null)
+                {
+                    AddressURL = URLNode.InnerText;
+                }
             }
-
-            XmlNode RefreshOnRecordLoadNode = Document.SelectSingleNode("//Settings/RefreshOnRecordLoad");
-            if (RefreshOnRecordLoadNode != null)
+            catch
             {
-                RefreshOnRecordLoad = bool.Parse(RefreshOnRecordLoadNode.InnerText);
-            }
 
-            XmlNode BlockRefreshAfterNavigateAwayNode = Document.SelectSingleNode("//Settings/BlockRefreshAfterNavigateAway");
-            if (BlockRefreshAfterNavigateAwayNode != null)
-            {
-                BlockRefreshAfterNavigateAway = bool.Parse(BlockRefreshAfterNavigateAwayNode.InnerText);
-            }
-
-            XmlNode CefsharpFolderLocationNode = Document.SelectSingleNode("//Settings/CefsharpFolderLocation");
-            if (CefsharpFolderLocationNode != null)
-            {
-                CefsharpFolderLocation = CefsharpFolderLocationNode.InnerText;
-            }
-
-            XmlNode URLNode = Document.SelectSingleNode("//Settings/URL");
-            if (URLNode != null)
-            {
-                AddressURL = URLNode.InnerText;
             }
         }
 
-        private void HomeButton_Click(object sender, EventArgs e)
+        //Setup the browser and it's dll directories 
+        private void SetupBrowser()
         {
-            cBrowser.Load(CustomURL);
-            HasNavigatedAway = false;
+            lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
+            browserExe = Path.Combine(CefsharpFolderLocation, @"CefSharp.BrowserSubprocess.exe");
+            locales = Path.Combine(CefsharpFolderLocation, @"locales\");
+            res = CefsharpFolderLocation;
+
+            var libraryLoader = new CefLibraryHandle(lib);
+
+            var settings = new CefSettings();
+            settings.BrowserSubprocessPath = browserExe;
+            settings.LocalesDirPath = locales;
+            settings.ResourcesDirPath = res;
+
+            Cef.Initialize(settings);
+
+            cBrowser = new ChromiumWebBrowser("about:blank")
+            {
+                Dock = DockStyle.Fill,
+            };
+            toolStripContainer.ContentPanel.Controls.Add(cBrowser);
+
+            cBrowser.AddressChanged += OnBrowserAddressChanged;
+            cBrowser.LoadingStateChanged += CBrowser_LoadingStateChanged;
         }
 
         //Ozone Initialize function
@@ -122,33 +153,6 @@ namespace RDC.Plugins.ChromeZone
             }
         }
 
-        //Setup the browser and it's dll directories 
-        private void SetupBrowser()
-        {
-            lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
-            browserExe = Path.Combine(CefsharpFolderLocation, @"CefSharp.BrowserSubprocess.exe");
-            locales = Path.Combine(CefsharpFolderLocation, @"locales\");
-            res = CefsharpFolderLocation;
-
-            var libraryLoader = new CefLibraryHandle(lib);
-
-            var settings = new CefSettings();
-            settings.BrowserSubprocessPath = browserExe;
-            settings.LocalesDirPath = locales;
-            settings.ResourcesDirPath = res;
-
-            Cef.Initialize(settings);
-
-            cBrowser = new ChromiumWebBrowser("about:blank")
-            {
-                Dock = DockStyle.Fill,
-            };
-            toolStripContainer.ContentPanel.Controls.Add(cBrowser);
-
-            cBrowser.AddressChanged += OnBrowserAddressChanged;
-            cBrowser.LoadingStateChanged += CBrowser_LoadingStateChanged;
-        }
-
         private void CBrowser_LoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
         {
             this.InvokeOnUiThreadIfRequired(() =>
@@ -179,6 +183,12 @@ namespace RDC.Plugins.ChromeZone
             {
                 HasNavigatedAway = false;
             }
+        }
+
+        private void HomeButton_Click(object sender, EventArgs e)
+        {
+            cBrowser.Load(CustomURL);
+            HasNavigatedAway = false;
         }
 
         private void backButton_Click(object sender, EventArgs e)
@@ -244,8 +254,5 @@ namespace RDC.Plugins.ChromeZone
                 return "";
             }
         }
-
-        private string ScreenID { get; set; }
-        private string _Subject { get; set; }
     }
 }
