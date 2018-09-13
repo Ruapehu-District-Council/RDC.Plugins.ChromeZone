@@ -18,7 +18,6 @@ namespace RDC.Plugins.ChromeZone
 
         static string lib, browserExe, locales, res;
 
-
         private bool RefreshOnScreenChange = false;
         private bool RefreshOnRecordLoad = true;
         private bool BlockRefreshAfterNavigateAway = true;
