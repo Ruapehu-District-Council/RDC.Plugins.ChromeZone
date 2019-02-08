@@ -29,6 +29,8 @@ namespace RDC.Plugins.ChromeZone
 
         private string AddressURL = string.Empty;
 
+        private string TabName = string.Empty;
+
         private string ScreenID;
         private string _Subject;
 
@@ -38,12 +40,8 @@ namespace RDC.Plugins.ChromeZone
 
             forwardButton.Click += forwardButton_Click;
             backButton.Click += backButton_Click;
-            refreshButton.Click += toolStripButton1_Click;
+            refreshButton.Click += refreshButton_Click;
             homeButton.Click += HomeButton_Click;
-
-            TryLoadSettings();
-
-            SetupBrowser();
         }
 
         private void TryLoadSettings()
@@ -57,34 +55,37 @@ namespace RDC.Plugins.ChromeZone
 
             try
             {
-                XmlDocument Document = new XmlDocument();
-                Document.LoadXml(File.ReadAllText(SettingsFile));
+                XmlDocument RootDocument = new XmlDocument();
+                RootDocument.LoadXml(File.ReadAllText(SettingsFile));
 
-                XmlNode RefreshOnScreenChangeNode = Document.SelectSingleNode("//Settings/RefreshOnScreenChange");
-                if (RefreshOnScreenChangeNode != null)
-                {
-                    RefreshOnScreenChange = bool.Parse(RefreshOnScreenChangeNode.InnerText);
-                }
-
-                XmlNode RefreshOnRecordLoadNode = Document.SelectSingleNode("//Settings/RefreshOnRecordLoad");
-                if (RefreshOnRecordLoadNode != null)
-                {
-                    RefreshOnRecordLoad = bool.Parse(RefreshOnRecordLoadNode.InnerText);
-                }
-
-                XmlNode BlockRefreshAfterNavigateAwayNode = Document.SelectSingleNode("//Settings/BlockRefreshAfterNavigateAway");
-                if (BlockRefreshAfterNavigateAwayNode != null)
-                {
-                    BlockRefreshAfterNavigateAway = bool.Parse(BlockRefreshAfterNavigateAwayNode.InnerText);
-                }
-
-                XmlNode CefsharpFolderLocationNode = Document.SelectSingleNode("//Settings/CefsharpFolderLocation");
+                XmlNode CefsharpFolderLocationNode = RootDocument.SelectSingleNode("//Settings/CefsharpFolderLocation");
                 if (CefsharpFolderLocationNode != null)
                 {
                     CefsharpFolderLocation = CefsharpFolderLocationNode.InnerText;
                 }
 
-                XmlNode URLNode = Document.SelectSingleNode("//Settings/URL");
+
+                XmlNode Document = RootDocument.SelectSingleNode("//Settings/Tabs/Tab[@Name='" + TabName + "']");
+
+                XmlNode RefreshOnScreenChangeNode = Document.SelectSingleNode("RefreshOnScreenChange");
+                if (RefreshOnScreenChangeNode != null)
+                {
+                    RefreshOnScreenChange = bool.Parse(RefreshOnScreenChangeNode.InnerText);
+                }
+
+                XmlNode RefreshOnRecordLoadNode = Document.SelectSingleNode("RefreshOnRecordLoad");
+                if (RefreshOnRecordLoadNode != null)
+                {
+                    RefreshOnRecordLoad = bool.Parse(RefreshOnRecordLoadNode.InnerText);
+                }
+
+                XmlNode BlockRefreshAfterNavigateAwayNode = Document.SelectSingleNode("BlockRefreshAfterNavigateAway");
+                if (BlockRefreshAfterNavigateAwayNode != null)
+                {
+                    BlockRefreshAfterNavigateAway = bool.Parse(BlockRefreshAfterNavigateAwayNode.InnerText);
+                }
+
+                XmlNode URLNode = Document.SelectSingleNode("URL");
                 if (URLNode != null)
                 {
                     AddressURL = URLNode.InnerText;
@@ -111,7 +112,10 @@ namespace RDC.Plugins.ChromeZone
             settings.LocalesDirPath = locales;
             settings.ResourcesDirPath = res;
 
-            Cef.Initialize(settings);
+            if (Cef.IsInitialized == false)
+            {
+                Cef.Initialize(settings);
+            }
 
             cBrowser = new ChromiumWebBrowser("about:blank")
             {
@@ -126,10 +130,18 @@ namespace RDC.Plugins.ChromeZone
         //Ozone Initialize function
         public override void Initialize(string InitData)
         {
+            base.Initialize(InitData);
+
+            TabName = InitData;
+
             if (AddressURL == string.Empty)
             {
                 AddressURL = InitData;
             }
+
+            TryLoadSettings();
+
+            SetupBrowser();
 
             LoadCustomPage();
         }
@@ -201,7 +213,7 @@ namespace RDC.Plugins.ChromeZone
             cBrowser.Forward();
         }
 
-        private void toolStripButton1_Click(object sender, EventArgs e)
+        private void refreshButton_Click(object sender, EventArgs e)
         {
             cBrowser.Reload();
         }
@@ -237,7 +249,11 @@ namespace RDC.Plugins.ChromeZone
             {
                 if (this.CommonBlock != null && this.CommonBlock.CurrentRecord != null)
                 {
-                    return this.CommonBlock.CurrentRecord.FileId;
+                    string id = this.CommonBlock.CurrentRecord.FileId;
+
+                    id = id.Replace(".", "_");
+
+                    return id;
                 }
                 return "";
             }
