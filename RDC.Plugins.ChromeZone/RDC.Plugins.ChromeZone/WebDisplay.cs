@@ -45,7 +45,8 @@ namespace RDC.Plugins.ChromeZone
 
         private void TryLoadSettings()
         {
-            string SettingsFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"ChromeZoneSettings.xml");
+            string value = System.Configuration.ConfigurationManager.AppSettings["ConfigFolderPath"];
+            string SettingsFile = Path.Combine(value, @"ChromeZoneSettings.xml");
 
             if (!File.Exists(SettingsFile))
             {
