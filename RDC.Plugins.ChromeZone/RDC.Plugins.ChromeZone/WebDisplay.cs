@@ -1,10 +1,12 @@
 ﻿using CefSharp;
+using CefSharp.Handler;
 using CefSharp.WinForms;
 using CefSharp.WinForms.Internals;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -35,12 +37,17 @@ namespace RDC.Plugins.ChromeZone
 
         public WebDisplay()
         {
+            TryLoadSettings();
+            var libraryLoader = new CefLibraryHandle(lib);
+
             InitializeComponent();
 
             forwardButton.Click += forwardButton_Click;
             backButton.Click += backButton_Click;
             refreshButton.Click += refreshButton_Click;
             homeButton.Click += HomeButton_Click;
+
+            //libraryLoader.Dispose();
         }
 
         private void TryLoadSettings()
@@ -63,7 +70,33 @@ namespace RDC.Plugins.ChromeZone
                 {
                     CefsharpFolderLocation = CefsharpFolderLocationNode.InnerText;
                 }
+            }
+            catch
+            {
 
+            }
+
+            lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
+            browserExe = Path.Combine(CefsharpFolderLocation, @"CefSharp.BrowserSubprocess.exe");
+            locales = Path.Combine(CefsharpFolderLocation, @"locales\");
+            res = CefsharpFolderLocation;
+            
+        }
+
+        private void LoadTabData()
+        {
+            string value = System.Configuration.ConfigurationManager.AppSettings["ConfigFolderPath"];
+            string SettingsFile = Path.Combine(value, @"ChromeZoneSettings.xml");
+
+            if (!File.Exists(SettingsFile))
+            {
+                return;
+            }
+
+            try
+            {
+                XmlDocument RootDocument = new XmlDocument();
+                RootDocument.LoadXml(File.ReadAllText(SettingsFile));
 
                 XmlNode Document = RootDocument.SelectSingleNode("//Settings/Tabs/Tab[@Name='" + TabName + "']");
 
@@ -95,22 +128,18 @@ namespace RDC.Plugins.ChromeZone
             {
 
             }
+
         }
 
         //Setup the browser and it's dll directories 
         private void SetupBrowser()
         {
-            lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
-            browserExe = Path.Combine(CefsharpFolderLocation, @"CefSharp.BrowserSubprocess.exe");
-            locales = Path.Combine(CefsharpFolderLocation, @"locales\");
-            res = CefsharpFolderLocation;
-
-            var libraryLoader = new CefLibraryHandle(lib);
-
-            var settings = new CefSettings();
-            settings.BrowserSubprocessPath = browserExe;
-            settings.LocalesDirPath = locales;
-            settings.ResourcesDirPath = res;
+            CefSettings settings = new CefSettings
+            {
+                BrowserSubprocessPath = browserExe,
+                LocalesDirPath = locales,
+                ResourcesDirPath = res
+            };
 
             if (Cef.IsInitialized == false)
             {
@@ -123,8 +152,47 @@ namespace RDC.Plugins.ChromeZone
             };
             toolStripContainer.ContentPanel.Controls.Add(cBrowser);
 
+            cBrowser.RequestHandler = new CustomRequestHandler();
             cBrowser.AddressChanged += OnBrowserAddressChanged;
             cBrowser.LoadingStateChanged += CBrowser_LoadingStateChanged;
+            cBrowser.LoadError += CBrowser_LoadError;
+            
+        }
+
+        private void CBrowser_LoadError(object sender, LoadErrorEventArgs e)
+        {
+            //System.Windows.Forms.MessageBox.Show(e.FailedUrl + " " + e.ErrorText + " "  + e.ErrorCode);
+        }
+
+        public class CustomResourceRequestHandler : ResourceRequestHandler
+        {
+
+            protected override bool OnProtocolExecution(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IRequest request)
+            {
+                if (request.Url.Contains("Http") || request.Url.Contains("Https"))
+                {
+                    return false;
+                }
+
+                if (browser.IsPopup)
+                {
+                    browser.CloseBrowser(false);
+                }
+                else
+                {
+                    System.Windows.Forms.MessageBox.Show("Frame URL: " + frame.Url + " Request URL: " + request.Url);
+                    frame.LoadUrl(frame.Url);
+                }
+                return true;
+            }
+        }
+
+        public class CustomRequestHandler : RequestHandler
+        {
+            protected override IResourceRequestHandler GetResourceRequestHandler(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IRequest request, bool isNavigation, bool isDownload, string requestInitiator, ref bool disableDefaultHandling)
+            {
+                return new CustomResourceRequestHandler();
+            }
         }
 
         //Ozone Initialize function
@@ -139,7 +207,7 @@ namespace RDC.Plugins.ChromeZone
                 AddressURL = InitData;
             }
 
-            TryLoadSettings();
+            LoadTabData();
 
             SetupBrowser();
 
@@ -165,9 +233,10 @@ namespace RDC.Plugins.ChromeZone
             }
         }
 
+
         private void CBrowser_LoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
         {
-            this.InvokeOnUiThreadIfRequired(() =>
+            InvokeOnUiThreadIfRequired(() =>
             {
                 if (e.IsLoading)
                 {
@@ -185,7 +254,7 @@ namespace RDC.Plugins.ChromeZone
 
         private void OnBrowserAddressChanged(object sender, AddressChangedEventArgs args)
         {
-            this.InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
+            InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
 
             if (args.Address.ToLower() != CustomURL.ToLower())
             {
@@ -268,6 +337,18 @@ namespace RDC.Plugins.ChromeZone
                     return this.CommonBlock.CurrentRecord.RecordId;
                 }
                 return "";
+            }
+        }
+
+        public void InvokeOnUiThreadIfRequired(Action action)
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(action);
+            }
+            else
+            {
+                action.Invoke();
             }
         }
     }
