@@ -3,13 +3,16 @@ using CefSharp.Handler;
 using CefSharp.WinForms;
 using CefSharp.WinForms.Internals;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Forms.VisualStyles;
 using System.Xml;
 
 namespace RDC.Plugins.ChromeZone
@@ -19,10 +22,6 @@ namespace RDC.Plugins.ChromeZone
         private ChromiumWebBrowser cBrowser;
 
         static string lib, browserExe, locales, res;
-
-        private bool RefreshOnScreenChange = false;
-        private bool RefreshOnRecordLoad = true;
-        private bool BlockRefreshAfterNavigateAway = true;
 
         private string CefsharpFolderLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\");
 
@@ -35,6 +34,16 @@ namespace RDC.Plugins.ChromeZone
         private string ScreenID;
         private string _Subject;
 
+        public Core.Objects.WebTab WebTab
+        {
+            get
+            {
+                var CurrentTab = Core.Settings.SettingsWrapper.WebTabs.Find(t => t.Name == TabName);
+
+                return CurrentTab;
+            }
+        }
+
         public WebDisplay()
         {
             TryLoadSettings();
@@ -46,34 +55,18 @@ namespace RDC.Plugins.ChromeZone
             backButton.Click += backButton_Click;
             refreshButton.Click += refreshButton_Click;
             homeButton.Click += HomeButton_Click;
-
-            //libraryLoader.Dispose();
         }
 
         private void TryLoadSettings()
         {
-            string value = System.Configuration.ConfigurationManager.AppSettings["ConfigFolderPath"];
-            string SettingsFile = Path.Combine(value, @"ChromeZoneSettings.xml");
-
-            if (!File.Exists(SettingsFile))
+            if (!Core.Settings.LoadSettings())
             {
                 return;
             }
 
-            try
+            if (Core.Settings.SettingsWrapper.CefsharpFolderLocation != string.Empty)
             {
-                XmlDocument RootDocument = new XmlDocument();
-                RootDocument.LoadXml(File.ReadAllText(SettingsFile));
-
-                XmlNode CefsharpFolderLocationNode = RootDocument.SelectSingleNode("//Settings/CefsharpFolderLocation");
-                if (CefsharpFolderLocationNode != null)
-                {
-                    CefsharpFolderLocation = CefsharpFolderLocationNode.InnerText;
-                }
-            }
-            catch
-            {
-
+                CefsharpFolderLocation = Core.Settings.SettingsWrapper.CefsharpFolderLocation;
             }
 
             lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
@@ -83,58 +76,10 @@ namespace RDC.Plugins.ChromeZone
             
         }
 
-        private void LoadTabData()
-        {
-            string value = System.Configuration.ConfigurationManager.AppSettings["ConfigFolderPath"];
-            string SettingsFile = Path.Combine(value, @"ChromeZoneSettings.xml");
-
-            if (!File.Exists(SettingsFile))
-            {
-                return;
-            }
-
-            try
-            {
-                XmlDocument RootDocument = new XmlDocument();
-                RootDocument.LoadXml(File.ReadAllText(SettingsFile));
-
-                XmlNode Document = RootDocument.SelectSingleNode("//Settings/Tabs/Tab[@Name='" + TabName + "']");
-
-                XmlNode RefreshOnScreenChangeNode = Document.SelectSingleNode("RefreshOnScreenChange");
-                if (RefreshOnScreenChangeNode != null)
-                {
-                    RefreshOnScreenChange = bool.Parse(RefreshOnScreenChangeNode.InnerText);
-                }
-
-                XmlNode RefreshOnRecordLoadNode = Document.SelectSingleNode("RefreshOnRecordLoad");
-                if (RefreshOnRecordLoadNode != null)
-                {
-                    RefreshOnRecordLoad = bool.Parse(RefreshOnRecordLoadNode.InnerText);
-                }
-
-                XmlNode BlockRefreshAfterNavigateAwayNode = Document.SelectSingleNode("BlockRefreshAfterNavigateAway");
-                if (BlockRefreshAfterNavigateAwayNode != null)
-                {
-                    BlockRefreshAfterNavigateAway = bool.Parse(BlockRefreshAfterNavigateAwayNode.InnerText);
-                }
-
-                XmlNode URLNode = Document.SelectSingleNode("URL");
-                if (URLNode != null)
-                {
-                    AddressURL = URLNode.InnerText;
-                }
-            }
-            catch
-            {
-
-            }
-
-        }
-
         //Setup the browser and it's dll directories 
         private void SetupBrowser()
         {
-            CefSettings settings = new CefSettings
+            var settings = new CefSettings
             {
                 BrowserSubprocessPath = browserExe,
                 LocalesDirPath = locales,
@@ -200,14 +145,21 @@ namespace RDC.Plugins.ChromeZone
         {
             base.Initialize(InitData);
 
+            System.Diagnostics.Debugger.Launch();
+
             TabName = InitData;
+
+            AddressURL = WebTab.DefaultURL;
 
             if (AddressURL == string.Empty)
             {
                 AddressURL = InitData;
             }
 
-            LoadTabData();
+            if (WebTab == null)
+            {
+                return;
+            }
 
             SetupBrowser();
 
@@ -216,7 +168,7 @@ namespace RDC.Plugins.ChromeZone
 
         public override void RecordRefresh(string InitData = "")
         {
-            if (RefreshOnRecordLoad)
+            if (WebTab.RefreshOnRecordLoad)
             {
                 LoadCustomPage();
             }
@@ -227,12 +179,11 @@ namespace RDC.Plugins.ChromeZone
             ScreenID = FunctionID;
             _Subject = SubjectID;
 
-            if (RefreshOnScreenChange)
+            if (WebTab.RefreshOnScreenChange)
             {
                 LoadCustomPage();
             }
         }
-
 
         private void CBrowser_LoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
         {
@@ -256,19 +207,12 @@ namespace RDC.Plugins.ChromeZone
         {
             InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
 
-            if (args.Address.ToLower() != CustomURL.ToLower())
-            {
-                HasNavigatedAway = true;
-            }
-            else
-            {
-                HasNavigatedAway = false;
-            }
+            HasNavigatedAway = args.Address.ToLower() != BuildCustomURL(AddressURL).ToLower();
         }
 
         private void HomeButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Load(CustomURL);
+            cBrowser.Load(BuildCustomURL(AddressURL));
             HasNavigatedAway = false;
         }
 
@@ -287,40 +231,112 @@ namespace RDC.Plugins.ChromeZone
             cBrowser.Reload();
         }
 
+        private string GetRecordAttribute(int attributeNumber)
+        {
+            var result = string.Empty;
+
+            if (CommonBlock == null)
+            {
+                return result;
+            }
+
+            var att = CommonBlock.CurrentRecord.GetAttribute(attributeNumber);
+
+            if (att != null && att.Count == 1 && att.Contains(1))
+            {
+                var value = att[1].ToString();
+
+                value = value.Replace("*", "-");
+                return value;
+            }
+
+            return result;
+        }
+
         private void LoadCustomPage()
         {
-            if (BlockRefreshAfterNavigateAway && HasNavigatedAway)
+            if (WebTab.BlockRefreshAfterNavigateAway && HasNavigatedAway)
             {
                 return;
             }
 
-            cBrowser.Load(CustomURL);
+            cBrowser.Load(BuildCustomURL(AddressURL));
         }
 
-        private string CustomURL
+        private string BuildCustomURL(string BaseURL)
         {
-            get
+            var CustomURL = GetCustomUrl();
+            if (CustomURL != string.Empty)
             {
-                string URL = AddressURL;
-
-                URL = URL.Replace("@@BusinessObjectID@@", BusinessObjectID);
-                URL = URL.Replace("@@RecordID@@", RecordID);
-                URL = URL.Replace("@@ScreenID@@", ScreenID);
-                URL = URL.Replace("@@Subject@@", _Subject);
-
-                return URL;
+                BaseURL = CustomURL;
             }
+
+            BaseURL = BaseURL.Replace("@@BusinessObjectID@@", BusinessObjectID);
+            BaseURL = BaseURL.Replace("@@RecordID@@", RecordID);
+            BaseURL = BaseURL.Replace("@@ScreenID@@", ScreenID);
+            BaseURL = BaseURL.Replace("@@Subject@@", _Subject);
+
+            if (BaseURL.Contains("**"))
+            {
+                try
+                {
+                    var RecordIDParts = BaseURL.Split(new[] {"**"}, StringSplitOptions.None);
+
+                    for (int i = 0; RecordIDParts.Length > i; i++)
+                    {
+                        i++;
+                        var attrID = RecordIDParts[i];
+                        if (int.TryParse(attrID, out int result))
+                        {
+                            var value = GetRecordAttribute(result);
+                            BaseURL = BaseURL.Replace($"**{attrID}**", value);
+                        }
+
+                        i++;
+                    }
+                }
+                catch (Exception e)
+                {
+                    e.ToString();
+                }
+            }
+
+            return BaseURL;
+        }
+
+        private string GetCustomUrl()
+        {
+            foreach (var rule in WebTab.URLRules)
+            {
+                switch (rule.Field)
+                {
+                    case "BusinessObjectID":
+                        if (BusinessObjectID == rule.Match)
+                        {
+                            return rule.URL;
+                        }
+                        break;
+
+                    case "ScreenID":
+                        break;
+                        
+                    case "Subject":
+                        break;
+                }
+            }
+
+            return string.Empty;
         }
 
         private string BusinessObjectID
         {
             get
             {
-                if (this.CommonBlock != null && this.CommonBlock.CurrentRecord != null)
+                if (CommonBlock?.CurrentRecord != null)
                 {
-                    string id = this.CommonBlock.CurrentRecord.FileId;
+                    var id = this.CommonBlock.CurrentRecord.FileId;
 
-                    id = id.Replace(".", "_");
+                    //id = id.Replace(".", "_");
 
                     return id;
                 }
@@ -334,7 +350,11 @@ namespace RDC.Plugins.ChromeZone
             {
                 if (this.CommonBlock != null && this.CommonBlock.CurrentRecord != null)
                 {
-                    return this.CommonBlock.CurrentRecord.RecordId;
+                    var record = this.CommonBlock.CurrentRecord.RecordId;
+
+                    record = record.Replace("*", "-");
+
+                    return record;
                 }
                 return "";
             }
