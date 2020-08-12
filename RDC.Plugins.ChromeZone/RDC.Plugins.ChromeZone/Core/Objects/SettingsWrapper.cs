@@ -10,6 +10,6 @@ namespace RDC.Plugins.ChromeZone.Core.Objects
     {
         public string CefsharpFolderLocation { get; set; }
 
-        public List<Core.Objects.WebTab> WebTabs { get; set; } = new List<WebTab>();
+        public List<WebTab> WebTabs { get; set; } = new List<WebTab>();
     }
 }

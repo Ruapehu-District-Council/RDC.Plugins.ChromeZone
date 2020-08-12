@@ -77,6 +77,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Core\Logic.cs" />
+    <Compile Include="Core\Objects\FieldConversion.cs" />
+    <Compile Include="Core\Objects\FieldRule.cs" />
     <Compile Include="Core\Objects\SettingsWrapper.cs" />
     <Compile Include="Core\Objects\URLRule.cs" />
     <Compile Include="Core\Objects\WebTab.cs" />

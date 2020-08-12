@@ -13,10 +13,7 @@ namespace RDC.Plugins.ChromeZone.Core.Objects
         public string Match { get; set; }
         public string URL { get; set; }
 
-        public string BuildURL()
-        {
-            return "";
-        }
-
+        public List<Objects.FieldRule> FieldRules { get; set; } = new List<FieldRule>();
+        public List<FieldConversion>FieldConversions { get; set; } = new List<FieldConversion>();
     }
 }

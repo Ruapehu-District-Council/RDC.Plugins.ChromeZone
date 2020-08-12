@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography.X509Certificates;
@@ -14,6 +15,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using System.Xml;
+using RDC.Plugins.ChromeZone.Core.Objects;
 
 namespace RDC.Plugins.ChromeZone
 {
@@ -47,7 +49,7 @@ namespace RDC.Plugins.ChromeZone
         public WebDisplay()
         {
             TryLoadSettings();
-            var libraryLoader = new CefLibraryHandle(lib);
+            new CefLibraryHandle(lib);
 
             InitializeComponent();
 
@@ -145,7 +147,7 @@ namespace RDC.Plugins.ChromeZone
         {
             base.Initialize(InitData);
 
-            System.Diagnostics.Debugger.Launch();
+            //System.Diagnostics.Debugger.Launch();
 
             TabName = InitData;
 
@@ -207,12 +209,12 @@ namespace RDC.Plugins.ChromeZone
         {
             InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
 
-            HasNavigatedAway = args.Address.ToLower() != BuildCustomURL(AddressURL).ToLower();
+            HasNavigatedAway = args.Address.ToLower() != BuildCustomUrl(AddressURL).ToLower();
         }
 
         private void HomeButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Load(BuildCustomURL(AddressURL));
+            cBrowser.Load(BuildCustomUrl(AddressURL));
             HasNavigatedAway = false;
         }
 
@@ -231,23 +233,199 @@ namespace RDC.Plugins.ChromeZone
             cBrowser.Reload();
         }
 
+
+        public string BuildCustomUrl(string baseUrl)
+        {
+            var customUrl = GetCustomUrl();
+
+            var adjustedValues = new Dictionary<string, string>();
+
+            if (customUrl != null)
+            {
+                baseUrl = customUrl.URL;
+
+                try
+                {
+                    HandleFieldConversions(adjustedValues, customUrl.FieldConversions);
+
+                    HandleFieldRules(adjustedValues, customUrl.FieldRules);
+                }
+                catch
+                {
+
+                }
+            }
+
+            baseUrl = adjustedValues.Aggregate(baseUrl, (current, keyValuePair) => current.Replace(keyValuePair.Key, keyValuePair.Value));
+
+            baseUrl = baseUrl.Replace("@@BusinessObjectID@@", BusinessObjectID);
+            baseUrl = baseUrl.Replace("@@RecordID@@", RecordID);
+            baseUrl = baseUrl.Replace("@@ScreenID@@", ScreenID);
+            baseUrl = baseUrl.Replace("@@Subject@@", _Subject);
+
+            if (baseUrl.Contains("**"))
+            {
+                var attributeIDs = Core.Logic.GetAttributeIDs(baseUrl);
+
+                attributeIDs.ForEach(i =>
+                {
+                    var replaceName = $"**{i}**";
+                    baseUrl = baseUrl.Replace(replaceName, GetRecordAttribute(i));
+                });
+            }
+
+            return baseUrl;
+        }
+
+        private void HandleFieldConversions(IDictionary<string, string> adjustedValues, List<FieldConversion> fieldConversions)
+        {
+            fieldConversions.ForEach(conversion =>
+            {
+                if (conversion.FieldName.Contains("@@"))
+                {
+                    switch (conversion.FieldName)
+                    {
+                        case "@@BusinessObjectID@@":
+                            adjustedValues.Add(conversion.FieldName, Core.Logic.HandleFieldConversion(BusinessObjectID, conversion));
+                            break;
+                        case "@@RecordID@@":
+                            adjustedValues.Add(conversion.FieldName, Core.Logic.HandleFieldConversion(RecordID, conversion));
+                            break;
+                        case "@@ScreenID@@":
+                            adjustedValues.Add(conversion.FieldName, Core.Logic.HandleFieldConversion(ScreenID, conversion));
+                            break;
+                        case "@@Subject@@":
+                            adjustedValues.Add(conversion.FieldName, Core.Logic.HandleFieldConversion(_Subject, conversion));
+                            break;
+                    }
+                }
+                else if (conversion.FieldName.Contains("**"))
+                {
+                    var fieldId = Core.Logic.GetAttributeID(conversion.FieldName);
+                    if (fieldId != -1)
+                    {
+                        var fieldValue = GetRecordAttribute(fieldId);
+                        adjustedValues.Add(conversion.FieldName, Core.Logic.HandleFieldConversion(fieldValue, conversion));
+                    }
+                }
+            });
+        }
+
+        private void HandleFieldRules(IDictionary<string, string> adjustedValues, List<FieldRule> fieldRules)
+        {
+            fieldRules.ForEach(rule =>
+            {
+                if (rule.FieldName.Contains("@@"))
+                {
+                    var value = "";
+                    switch (rule.FieldName)
+                    {
+                        case "@@BusinessObjectID@@":
+                            value = BusinessObjectID;
+                            break;
+                        case "@@RecordID@@":
+                            value = RecordID;
+                            break;
+                        case "@@ScreenID@@":
+                            value = ScreenID;
+                            break;
+                        case "@@Subject@@":
+                            value = Subject;
+                            break;
+                    }
+
+                    var hasMatch = Core.Logic.HandleMatchFieldRules(value, rule.Operator, rule.Value);
+                    if (hasMatch)
+                    {
+                        if (adjustedValues.ContainsKey(rule.FieldName))
+                        {
+                            adjustedValues[rule.FieldName] = rule.Result;
+                        }
+                        else
+                        {
+                            adjustedValues.Add(rule.FieldName, rule.Result);
+                        }
+                    }
+                }
+                else if (rule.FieldName.Contains("**"))
+                {
+                    var fieldId = Core.Logic.GetAttributeID(rule.FieldName);
+                    if (fieldId != -1)
+                    {
+                        var fieldValue = GetRecordAttribute(fieldId);
+                        var hasMatch = Core.Logic.HandleMatchFieldRules(fieldValue, rule.Operator, rule.Value);
+                        if (hasMatch)
+                        {
+                            if (adjustedValues.ContainsKey(rule.FieldName))
+                            {
+                                adjustedValues[rule.FieldName] = rule.Result;
+                            }
+                            else
+                            {
+                                adjustedValues.Add(rule.FieldName, rule.Result);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        private URLRule GetCustomUrl()
+        {
+            foreach (var rule in WebTab.URLRules)
+            {
+                switch (rule.Field)
+                {
+                    case "BusinessObjectID":
+                        if (BusinessObjectID == rule.Match)
+                        {
+                            return rule;
+                        }
+                        break;
+
+                    case "ScreenID":
+                        if (ScreenID == rule.Match)
+                        {
+                            return rule;
+                        }
+                        break;
+
+                    case "Subject":
+                        if (Subject == rule.Match)
+                        {
+                            return rule;
+                        }
+                        break;
+                }
+            }
+
+            return null;
+        }
+
         private string GetRecordAttribute(int attributeNumber)
         {
             var result = string.Empty;
 
-            if (CommonBlock == null)
+            try
             {
-                return result;
+                if (CommonBlock == null)
+                {
+                    return result;
+                }
+
+                var att = CommonBlock.CurrentRecord.GetAttribute(attributeNumber);
+
+                if (att != null && att.Count == 1 && att.Contains(1))
+                {
+                    var value = att[1].ToString();
+
+                    value = value.Replace("*", "-");
+                    return value;
+                }
             }
-
-            var att = CommonBlock.CurrentRecord.GetAttribute(attributeNumber);
-
-            if (att != null && att.Count == 1 && att.Contains(1))
+            catch
             {
-                var value = att[1].ToString();
 
-                value = value.Replace("*", "-");
-                return value;
             }
 
             return result;
@@ -260,72 +438,7 @@ namespace RDC.Plugins.ChromeZone
                 return;
             }
 
-            cBrowser.Load(BuildCustomURL(AddressURL));
-        }
-
-        private string BuildCustomURL(string BaseURL)
-        {
-            var CustomURL = GetCustomUrl();
-            if (CustomURL != string.Empty)
-            {
-                BaseURL = CustomURL;
-            }
-
-            BaseURL = BaseURL.Replace("@@BusinessObjectID@@", BusinessObjectID);
-            BaseURL = BaseURL.Replace("@@RecordID@@", RecordID);
-            BaseURL = BaseURL.Replace("@@ScreenID@@", ScreenID);
-            BaseURL = BaseURL.Replace("@@Subject@@", _Subject);
-
-            if (BaseURL.Contains("**"))
-            {
-                try
-                {
-                    var RecordIDParts = BaseURL.Split(new[] {"**"}, StringSplitOptions.None);
-
-                    for (int i = 0; RecordIDParts.Length > i; i++)
-                    {
-                        i++;
-                        var attrID = RecordIDParts[i];
-                        if (int.TryParse(attrID, out int result))
-                        {
-                            var value = GetRecordAttribute(result);
-                            BaseURL = BaseURL.Replace($"**{attrID}**", value);
-                        }
-
-                        i++;
-                    }
-                }
-                catch (Exception e)
-                {
-                    e.ToString();
-                }
-            }
-
-            return BaseURL;
-        }
-
-        private string GetCustomUrl()
-        {
-            foreach (var rule in WebTab.URLRules)
-            {
-                switch (rule.Field)
-                {
-                    case "BusinessObjectID":
-                        if (BusinessObjectID == rule.Match)
-                        {
-                            return rule.URL;
-                        }
-                        break;
-
-                    case "ScreenID":
-                        break;
-                        
-                    case "Subject":
-                        break;
-                }
-            }
-
-            return string.Empty;
+            cBrowser.Load(BuildCustomUrl(AddressURL));
         }
 
         private string BusinessObjectID
@@ -335,8 +448,6 @@ namespace RDC.Plugins.ChromeZone
                 if (CommonBlock?.CurrentRecord != null)
                 {
                     var id = this.CommonBlock.CurrentRecord.FileId;
-
-                    //id = id.Replace(".", "_");
 
                     return id;
                 }
