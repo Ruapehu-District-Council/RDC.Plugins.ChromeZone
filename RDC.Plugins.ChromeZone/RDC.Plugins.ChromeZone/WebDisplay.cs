@@ -127,7 +127,6 @@ namespace RDC.Plugins.ChromeZone
                 }
                 else
                 {
-                    System.Windows.Forms.MessageBox.Show("Frame URL: " + frame.Url + " Request URL: " + request.Url);
                     frame.LoadUrl(frame.Url);
                 }
                 return true;
@@ -334,33 +333,42 @@ namespace RDC.Plugins.ChromeZone
                             break;
                     }
 
-                    var hasMatch = Core.Logic.HandleMatchFieldRules(value, rule.Operator, rule.Value);
-                    if (hasMatch)
+                    if (adjustedValues.ContainsKey(rule.FieldName))
                     {
-                        if (adjustedValues.ContainsKey(rule.FieldName))
+                        var hasMatch = Core.Logic.HandleMatchFieldRules(adjustedValues[rule.FieldName], rule.Operator, rule.Value);
+                        if (hasMatch)
                         {
                             adjustedValues[rule.FieldName] = rule.Result;
                         }
-                        else
+                    }
+                    else
+                    {
+                        var hasMatch = Core.Logic.HandleMatchFieldRules(value, rule.Operator, rule.Value);
+                        if (hasMatch)
                         {
                             adjustedValues.Add(rule.FieldName, rule.Result);
                         }
                     }
+
                 }
                 else if (rule.FieldName.Contains("**"))
                 {
                     var fieldId = Core.Logic.GetAttributeID(rule.FieldName);
                     if (fieldId != -1)
                     {
-                        var fieldValue = GetRecordAttribute(fieldId);
-                        var hasMatch = Core.Logic.HandleMatchFieldRules(fieldValue, rule.Operator, rule.Value);
-                        if (hasMatch)
+                        if (adjustedValues.ContainsKey(rule.FieldName))
                         {
-                            if (adjustedValues.ContainsKey(rule.FieldName))
+                            var hasMatch = Core.Logic.HandleMatchFieldRules(adjustedValues[rule.FieldName], rule.Operator, rule.Value);
+                            if (hasMatch)
                             {
                                 adjustedValues[rule.FieldName] = rule.Result;
                             }
-                            else
+                        }
+                        else
+                        {
+                            var fieldValue = GetRecordAttribute(fieldId);
+                            var hasMatch = Core.Logic.HandleMatchFieldRules(fieldValue, rule.Operator, rule.Value);
+                            if (hasMatch)
                             {
                                 adjustedValues.Add(rule.FieldName, rule.Result);
                             }
