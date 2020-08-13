@@ -108,7 +108,10 @@ namespace RDC.Plugins.ChromeZone
 
         private void CBrowser_LoadError(object sender, LoadErrorEventArgs e)
         {
-            //System.Windows.Forms.MessageBox.Show(e.FailedUrl + " " + e.ErrorText + " "  + e.ErrorCode);
+            if (e.ErrorCode == CefErrorCode.FileNotFound && e.FailedUrl != WebTab.DefaultURL)
+            {
+                cBrowser.Load(BuildCustomUrl(WebTab.DefaultURL));
+            }
         }
 
         public class CustomResourceRequestHandler : ResourceRequestHandler
@@ -231,7 +234,6 @@ namespace RDC.Plugins.ChromeZone
         {
             cBrowser.Reload();
         }
-
 
         public string BuildCustomUrl(string baseUrl)
         {
