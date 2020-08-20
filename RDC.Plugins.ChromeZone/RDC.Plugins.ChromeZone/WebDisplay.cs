@@ -255,6 +255,10 @@ namespace RDC.Plugins.ChromeZone
                 {
 
                 }
+
+                var rem = GetRecordAttribute("CE.CEM.NAME");
+
+                rem.ToString();
             }
 
             baseUrl = adjustedValues.Aggregate(baseUrl, (current, keyValuePair) => current.Replace(keyValuePair.Key, keyValuePair.Value));
@@ -424,6 +428,47 @@ namespace RDC.Plugins.ChromeZone
                 }
 
                 var att = CommonBlock.CurrentRecord.GetAttribute(attributeNumber);
+
+                if (att != null && att.Count == 1 && att.Contains(1))
+                {
+                    var value = att[1].ToString();
+
+                    value = value.Replace("*", "-");
+                    return value;
+                }
+            }
+            catch
+            {
+
+            }
+
+            return result;
+        }
+
+        private string GetRecordAttribute(string dictionary)
+        {
+            var result = string.Empty;
+
+            try
+            {
+                if (CommonBlock == null)
+                {
+                    return result;
+                }
+
+                HybridDictionary att = CommonBlock.CurrentRecordDisplay.GetAttribute(dictionary);
+
+                if (att == null)
+                {
+                    foreach (DictionaryEntry o in CommonBlock.CurrentRecordDisplay.Data)
+                    {
+                        if (o.Key.ToString().Contains(dictionary))
+                        {
+                            att = o.Value as HybridDictionary;
+                            break;
+                        }
+                    }
+                }
 
                 if (att != null && att.Count == 1 && att.Contains(1))
                 {
