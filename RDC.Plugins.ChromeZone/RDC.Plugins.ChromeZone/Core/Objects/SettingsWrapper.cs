@@ -8,7 +8,7 @@ namespace RDC.Plugins.ChromeZone.Core.Objects
 {
     public class SettingsWrapper
     {
-        public string CefsharpFolderLocation { get; set; }
+        public string WebView2FolderLocation { get; set; }
 
         public List<WebTab> WebTabs { get; set; } = new List<WebTab>();
     }

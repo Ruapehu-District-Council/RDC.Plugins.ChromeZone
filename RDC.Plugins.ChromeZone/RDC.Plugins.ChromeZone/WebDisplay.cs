@@ -1,31 +1,27 @@
-﻿using CefSharp;
-using CefSharp.Handler;
-using CefSharp.WinForms;
-using CefSharp.WinForms.Internals;
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
 using System.Xml;
+using Microsoft.Web.WebView2.Core;
+using Microsoft.Web.WebView2.WinForms;
 using RDC.Plugins.ChromeZone.Core.Objects;
 
 namespace RDC.Plugins.ChromeZone
 {
     public partial class WebDisplay : DisplayComponents
     {
-        private ChromiumWebBrowser cBrowser;
-
-        static string lib, browserExe, locales, res;
-
-        private string CefsharpFolderLocation = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"cefsharp\");
+        private WebView2 webView2;
 
         private bool HasNavigatedAway = false;
 
@@ -36,7 +32,10 @@ namespace RDC.Plugins.ChromeZone
         private string ScreenID;
         private string _Subject;
 
-        public Core.Objects.WebTab WebTab
+        [DllImport("kernel32.dll", SetLastError = true)]
+        public static extern bool SetDllDirectory(string lpPathName);
+
+        public WebTab WebTab
         {
             get
             {
@@ -49,7 +48,9 @@ namespace RDC.Plugins.ChromeZone
         public WebDisplay()
         {
             TryLoadSettings();
-            new CefLibraryHandle(lib);
+
+            SetDllDirectory(Core.Settings.SettingsWrapper.WebView2FolderLocation);
+
 
             InitializeComponent();
 
@@ -57,6 +58,8 @@ namespace RDC.Plugins.ChromeZone
             backButton.Click += backButton_Click;
             refreshButton.Click += refreshButton_Click;
             homeButton.Click += HomeButton_Click;
+
+            SetupBrowser();
         }
 
         private void TryLoadSettings()
@@ -64,83 +67,6 @@ namespace RDC.Plugins.ChromeZone
             if (!Core.Settings.LoadSettings())
             {
                 return;
-            }
-
-            if (Core.Settings.SettingsWrapper.CefsharpFolderLocation != string.Empty)
-            {
-                CefsharpFolderLocation = Core.Settings.SettingsWrapper.CefsharpFolderLocation;
-            }
-
-            lib = Path.Combine(CefsharpFolderLocation, @"libcef.dll");
-            browserExe = Path.Combine(CefsharpFolderLocation, @"CefSharp.BrowserSubprocess.exe");
-            locales = Path.Combine(CefsharpFolderLocation, @"locales\");
-            res = CefsharpFolderLocation;
-            
-        }
-
-        //Setup the browser and it's dll directories 
-        private void SetupBrowser()
-        {
-            var settings = new CefSettings
-            {
-                BrowserSubprocessPath = browserExe,
-                LocalesDirPath = locales,
-                ResourcesDirPath = res
-            };
-
-            if (Cef.IsInitialized == false)
-            {
-                Cef.Initialize(settings);
-            }
-
-            cBrowser = new ChromiumWebBrowser("about:blank")
-            {
-                Dock = DockStyle.Fill,
-            };
-            toolStripContainer.ContentPanel.Controls.Add(cBrowser);
-
-            cBrowser.RequestHandler = new CustomRequestHandler();
-            cBrowser.AddressChanged += OnBrowserAddressChanged;
-            cBrowser.LoadingStateChanged += CBrowser_LoadingStateChanged;
-            cBrowser.LoadError += CBrowser_LoadError;
-            
-        }
-
-        private void CBrowser_LoadError(object sender, LoadErrorEventArgs e)
-        {
-            if (e.ErrorCode == CefErrorCode.FileNotFound && e.FailedUrl != WebTab.DefaultURL)
-            {
-                cBrowser.Load(BuildCustomUrl(WebTab.DefaultURL));
-            }
-        }
-
-        public class CustomResourceRequestHandler : ResourceRequestHandler
-        {
-
-            protected override bool OnProtocolExecution(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IRequest request)
-            {
-                if (request.Url.Contains("Http") || request.Url.Contains("Https"))
-                {
-                    return false;
-                }
-
-                if (browser.IsPopup)
-                {
-                    browser.CloseBrowser(false);
-                }
-                else
-                {
-                    frame.LoadUrl(frame.Url);
-                }
-                return true;
-            }
-        }
-
-        public class CustomRequestHandler : RequestHandler
-        {
-            protected override IResourceRequestHandler GetResourceRequestHandler(IWebBrowser chromiumWebBrowser, IBrowser browser, IFrame frame, IRequest request, bool isNavigation, bool isDownload, string requestInitiator, ref bool disableDefaultHandling)
-            {
-                return new CustomResourceRequestHandler();
             }
         }
 
@@ -165,9 +91,33 @@ namespace RDC.Plugins.ChromeZone
                 return;
             }
 
-            SetupBrowser();
+            toolStripContainer.ContentPanel.Controls.Add(webView2);
 
             LoadCustomPage();
+        }
+
+        //Setup the browser and it's dll directories 
+        private async void SetupBrowser()
+        {
+            webView2 = new WebView2();
+
+            string DefaultLogFilePath = Path.Combine(Path.GetTempPath(), "OzoneWebVTemp");
+
+            if (Directory.Exists(DefaultLogFilePath) == false)
+            {
+                Directory.CreateDirectory(DefaultLogFilePath);
+            }
+
+            var env = await CoreWebView2Environment.CreateAsync(null, DefaultLogFilePath);
+
+           await webView2.EnsureCoreWebView2Async(env);
+
+            webView2.NavigationStarting += WebView2_NavigationStarting;
+            webView2.NavigationCompleted += WebView2OnNavigationCompleted;
+
+            webView2.Width = Int32.MaxValue;
+            webView2.Height = Int32.MaxValue;
+            webView2.Dock = DockStyle.Fill;
         }
 
         public override void RecordRefresh(string InitData = "")
@@ -189,50 +139,41 @@ namespace RDC.Plugins.ChromeZone
             }
         }
 
-        private void CBrowser_LoadingStateChanged(object sender, LoadingStateChangedEventArgs e)
+        private void WebView2OnNavigationCompleted(object sender, CoreWebView2NavigationCompletedEventArgs e)
         {
-            InvokeOnUiThreadIfRequired(() =>
-            {
-                if (e.IsLoading)
-                {
-                    Waiting = true;
-                    ProgressIndicatorVisible = true;
-
-                }
-                else if (e.IsLoading == false)
-                {
-                    Waiting = false;
-                    ProgressIndicatorVisible = false;
-                }
-            });
+            Waiting = false;
+            ProgressIndicatorVisible = false;
         }
 
-        private void OnBrowserAddressChanged(object sender, AddressChangedEventArgs args)
+        private void WebView2_NavigationStarting(object sender, CoreWebView2NavigationStartingEventArgs e)
         {
-            InvokeOnUiThreadIfRequired(() => urlTextBox.Text = args.Address);
+            InvokeOnUiThreadIfRequired(() => urlTextBox.Text = e.Uri);
 
-            HasNavigatedAway = args.Address.ToLower() != BuildCustomUrl(AddressURL).ToLower();
+            HasNavigatedAway = e.Uri.ToLower() != BuildCustomUrl(AddressURL).ToLower();
+
+            Waiting = true;
+            ProgressIndicatorVisible = true;
         }
 
         private void HomeButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Load(BuildCustomUrl(AddressURL));
+            webView2.CoreWebView2.Navigate(BuildCustomUrl(AddressURL));
             HasNavigatedAway = false;
         }
 
         private void backButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Back();
+            webView2.GoBack();
         }
 
         private void forwardButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Forward();
+            webView2.GoForward();
         }
 
         private void refreshButton_Click(object sender, EventArgs e)
         {
-            cBrowser.Reload();
+            webView2.Refresh();
         }
 
         public string BuildCustomUrl(string baseUrl)
@@ -493,7 +434,7 @@ namespace RDC.Plugins.ChromeZone
                 return;
             }
 
-            cBrowser.Load(BuildCustomUrl(AddressURL));
+            webView2.CoreWebView2?.Navigate(BuildCustomUrl(AddressURL));
         }
 
         private string BusinessObjectID
