@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing.Printing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,6 +21,18 @@ namespace RDC.Plugins.ChromeZone.Core
             }
 
             return -1;
+        }
+
+        public static string GetAttributeField(string baseString)
+        {
+            var fields = GetAttributeFields(baseString);
+
+            if (fields.Count > 0)
+            {
+                return fields[0];
+            }
+
+            return string.Empty;
         }
 
         public static List<int> GetAttributeIDs(string baseString)
@@ -47,6 +60,29 @@ namespace RDC.Plugins.ChromeZone.Core
             }
 
             return attributeIDs;
+        }
+
+        public static List<string> GetAttributeFields(string baseString)
+        {
+            var Fields = new List<string>();
+            try
+            {
+                var RecordFieldParts = baseString.Split(new[] { "**" }, StringSplitOptions.None);
+
+                for (int i = 0; RecordFieldParts.Length > i; i++)
+                {
+                    i++;
+                    var attrName = RecordFieldParts[i];
+                    Fields.Add(attrName);
+                    i++;
+                }
+            }
+            catch (Exception e)
+            {
+                e.ToString();
+            }
+
+            return Fields;
         }
 
         public static string HandleFieldConversion(string fieldValue, FieldConversion conversion)

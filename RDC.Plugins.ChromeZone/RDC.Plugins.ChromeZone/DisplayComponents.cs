@@ -81,15 +81,16 @@ namespace RDC.Plugins.ChromeZone
             // homeButton
             // 
             this.homeButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.homeButton.Image = global::RDC.Plugins.ChromeZone.Properties.Resources.home;
             this.homeButton.ImageTransparentColor = System.Drawing.Color.Transparent;
             this.homeButton.Name = "homeButton";
             this.homeButton.Size = new System.Drawing.Size(23, 22);
-           
             // 
             // backButton
             // 
             this.backButton.BackColor = System.Drawing.Color.Transparent;
             this.backButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.backButton.Image = global::RDC.Plugins.ChromeZone.Properties.Resources.arrow_left;
             this.backButton.ImageTransparentColor = System.Drawing.Color.Transparent;
             this.backButton.Name = "backButton";
             this.backButton.Size = new System.Drawing.Size(23, 22);
@@ -103,6 +104,7 @@ namespace RDC.Plugins.ChromeZone
             // 
             this.forwardButton.BackColor = System.Drawing.Color.Transparent;
             this.forwardButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.forwardButton.Image = global::RDC.Plugins.ChromeZone.Properties.Resources.arrow_right;
             this.forwardButton.ImageTransparentColor = System.Drawing.Color.Transparent;
             this.forwardButton.Name = "forwardButton";
             this.forwardButton.Size = new System.Drawing.Size(23, 22);
@@ -110,6 +112,7 @@ namespace RDC.Plugins.ChromeZone
             // refreshButton
             // 
             this.refreshButton.BackgroundImageLayout = System.Windows.Forms.ImageLayout.Stretch;
+            this.refreshButton.Image = global::RDC.Plugins.ChromeZone.Properties.Resources.refresh;
             this.refreshButton.ImageTransparentColor = System.Drawing.Color.Transparent;
             this.refreshButton.Name = "refreshButton";
             this.refreshButton.Size = new System.Drawing.Size(23, 22);
@@ -126,9 +129,9 @@ namespace RDC.Plugins.ChromeZone
             this.toolStripProgressBar1.Alignment = System.Windows.Forms.ToolStripItemAlignment.Right;
             this.toolStripProgressBar1.Name = "toolStripProgressBar1";
             this.toolStripProgressBar1.Size = new System.Drawing.Size(100, 22);
-            this.toolStripProgressBar1.Visible = false;
-            this.toolStripProgressBar1.Style = ProgressBarStyle.Continuous;
+            this.toolStripProgressBar1.Style = System.Windows.Forms.ProgressBarStyle.Continuous;
             this.toolStripProgressBar1.Value = 100;
+            this.toolStripProgressBar1.Visible = false;
             // 
             // DisplayComponents
             // 
@@ -144,19 +147,6 @@ namespace RDC.Plugins.ChromeZone
             this.toolStrip1.ResumeLayout(false);
             this.toolStrip1.PerformLayout();
             this.ResumeLayout(false);
-
-
-            //Setup the icons for the buttons
-            Assembly asm = Assembly.GetExecutingAssembly();
-            Bitmap backButtonImage = new Bitmap(asm.GetManifestResourceStream("RDC.Plugins.ChromeZone.Icons.arrow-left.png"));
-            Bitmap forwardButtonImage = new Bitmap(asm.GetManifestResourceStream("RDC.Plugins.ChromeZone.Icons.arrow-right.png"));
-            Bitmap refreshButtonImage = new Bitmap(asm.GetManifestResourceStream("RDC.Plugins.ChromeZone.Icons.refresh.png"));
-            Bitmap homeButtonImage = new Bitmap(asm.GetManifestResourceStream("RDC.Plugins.ChromeZone.Icons.home.png"));
-
-            this.backButton.Image = backButtonImage;
-            this.forwardButton.Image = forwardButtonImage;
-            this.refreshButton.Image = refreshButtonImage;
-            this.homeButton.Image = homeButtonImage;
 
         }
 

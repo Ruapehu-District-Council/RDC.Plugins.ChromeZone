@@ -15,7 +15,9 @@ using System.Windows.Forms.VisualStyles;
 using System.Xml;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using Origen.Ozone.Plugins;
 using RDC.Plugins.ChromeZone.Core.Objects;
+using ContentAlignment = System.Drawing.ContentAlignment;
 
 namespace RDC.Plugins.ChromeZone
 {
@@ -51,7 +53,6 @@ namespace RDC.Plugins.ChromeZone
 
             SetDllDirectory(Core.Settings.SettingsWrapper.WebView2FolderLocation);
 
-
             InitializeComponent();
 
             forwardButton.Click += forwardButton_Click;
@@ -60,6 +61,7 @@ namespace RDC.Plugins.ChromeZone
             homeButton.Click += HomeButton_Click;
 
             SetupBrowser();
+            
         }
 
         private void TryLoadSettings()
@@ -74,6 +76,20 @@ namespace RDC.Plugins.ChromeZone
         public override void Initialize(string InitData)
         {
             base.Initialize(InitData);
+
+            if (webView2 == null)
+            {
+                var label = new Label();
+                label.Dock = DockStyle.Fill;
+                label.Width = Int32.MaxValue;
+                label.Height = Int32.MaxValue;
+                label.TextAlign = ContentAlignment.MiddleCenter;
+                label.Text = "Issue Loading webview.";
+                label.Font = new Font(FontFamily.GenericSansSerif, 25, FontStyle.Bold);
+
+                toolStripContainer.ContentPanel.Controls.Add(label);
+                return;
+            }
 
             //System.Diagnostics.Debugger.Launch();
 
@@ -92,13 +108,20 @@ namespace RDC.Plugins.ChromeZone
             }
 
             toolStripContainer.ContentPanel.Controls.Add(webView2);
-
+            
             LoadCustomPage();
+            
         }
 
         //Setup the browser and it's dll directories 
         private async void SetupBrowser()
         {
+            var version = Core.InstallCheck.GetWebView2Version();
+            if (version == String.Empty)
+            {
+                return;
+            }
+            
             webView2 = new WebView2();
 
             string DefaultLogFilePath = Path.Combine(Path.GetTempPath(), "OzoneWebVTemp");
@@ -108,9 +131,17 @@ namespace RDC.Plugins.ChromeZone
                 Directory.CreateDirectory(DefaultLogFilePath);
             }
 
-            var env = await CoreWebView2Environment.CreateAsync(null, DefaultLogFilePath);
+            try
+            {
+                var env = await CoreWebView2Environment.CreateAsync(null, DefaultLogFilePath);
 
-           await webView2.EnsureCoreWebView2Async(env);
+                await webView2.EnsureCoreWebView2Async(env);
+            }
+            catch (Exception e)
+            {
+                System.Windows.Forms.MessageBox.Show(e.ToString());
+                throw;
+            }
 
             webView2.NavigationStarting += WebView2_NavigationStarting;
             webView2.NavigationCompleted += WebView2OnNavigationCompleted;
@@ -157,23 +188,28 @@ namespace RDC.Plugins.ChromeZone
 
         private void HomeButton_Click(object sender, EventArgs e)
         {
+            if (webView2 == null)
+            {
+                return;
+            }
+
             webView2.CoreWebView2.Navigate(BuildCustomUrl(AddressURL));
             HasNavigatedAway = false;
         }
 
         private void backButton_Click(object sender, EventArgs e)
         {
-            webView2.GoBack();
+            webView2?.GoBack();
         }
 
         private void forwardButton_Click(object sender, EventArgs e)
         {
-            webView2.GoForward();
+            webView2?.GoForward();
         }
 
         private void refreshButton_Click(object sender, EventArgs e)
         {
-            webView2.Refresh();
+            webView2?.Refresh();
         }
 
         public string BuildCustomUrl(string baseUrl)
@@ -196,10 +232,6 @@ namespace RDC.Plugins.ChromeZone
                 {
 
                 }
-
-                var rem = GetRecordAttribute("CE.CEM.NAME");
-
-                rem.ToString();
             }
 
             baseUrl = adjustedValues.Aggregate(baseUrl, (current, keyValuePair) => current.Replace(keyValuePair.Key, keyValuePair.Value));
@@ -211,9 +243,9 @@ namespace RDC.Plugins.ChromeZone
 
             if (baseUrl.Contains("**"))
             {
-                var attributeIDs = Core.Logic.GetAttributeIDs(baseUrl);
+                var attributeFields = Core.Logic.GetAttributeFields(baseUrl);
 
-                attributeIDs.ForEach(i =>
+                attributeFields.ForEach(i =>
                 {
                     var replaceName = $"**{i}**";
                     baseUrl = baseUrl.Replace(replaceName, GetRecordAttribute(i));
@@ -247,12 +279,13 @@ namespace RDC.Plugins.ChromeZone
                 }
                 else if (conversion.FieldName.Contains("**"))
                 {
-                    var fieldId = Core.Logic.GetAttributeID(conversion.FieldName);
-                    if (fieldId != -1)
+                    var fieldId = Core.Logic.GetAttributeField(conversion.FieldName);
+                    if (fieldId != String.Empty)
                     {
                         var fieldValue = GetRecordAttribute(fieldId);
                         adjustedValues.Add(conversion.FieldName, Core.Logic.HandleFieldConversion(fieldValue, conversion));
                     }
+
                 }
             });
         }
@@ -397,26 +430,24 @@ namespace RDC.Plugins.ChromeZone
                     return result;
                 }
 
-                HybridDictionary att = CommonBlock.CurrentRecordDisplay.GetAttribute(dictionary);
-
-                if (att == null)
+                var lap = CommonBlock.CurrentRecord.LazyLoad(dictionary);
+                if (lap.Count > 0)
                 {
-                    foreach (DictionaryEntry o in CommonBlock.CurrentRecordDisplay.Data)
+                    var value = lap[1].ToString();
+                    if (value != string.Empty)
                     {
-                        if (o.Key.ToString().Contains(dictionary))
-                        {
-                            att = o.Value as HybridDictionary;
-                            break;
-                        }
+                        result = value;
                     }
                 }
 
-                if (att != null && att.Count == 1 && att.Contains(1))
+                if (result == string.Empty)
                 {
-                    var value = att[1].ToString();
-
-                    value = value.Replace("*", "-");
-                    return value;
+                    var lad = CommonBlock.CurrentRecordDisplay.LazyLoad(dictionary);
+                    var value = lad[1].ToString();
+                    if (value != string.Empty)
+                    {
+                        result = value;
+                    }
                 }
             }
             catch
@@ -429,6 +460,11 @@ namespace RDC.Plugins.ChromeZone
 
         private void LoadCustomPage()
         {
+            if (webView2 == null)
+            {
+                return;
+            }
+
             if (WebTab.BlockRefreshAfterNavigateAway && HasNavigatedAway)
             {
                 return;
