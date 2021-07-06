@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace RDC.Plugins.ChromeZone.Core.Objects
 {
-    public class WebTab
+    public class WebTab : Interfaces.IWebTab
     {
 
         public string Name { get; set; }
@@ -17,7 +17,7 @@ namespace RDC.Plugins.ChromeZone.Core.Objects
 
         public string DefaultURL { get; set; }
 
-        public List<URLRule> URLRules { get; set; } = new List<URLRule>();
+        public List<Interfaces.IURLRule> URLRules { get; set; } = new List<Interfaces.IURLRule>();
         
     }
 }

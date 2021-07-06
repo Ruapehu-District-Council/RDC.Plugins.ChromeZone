@@ -5,6 +5,8 @@ VisualStudioVersion = 15.0.27428.2011
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RDC.Plugins.ChromeZone", "RDC.Plugins.ChromeZone\RDC.Plugins.ChromeZone.csproj", "{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConfigApp", "ConfigApp\ConfigApp.csproj", "{7A4F603B-EBAA-48E4-B674-0437458F5058}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,14 @@ Global
 		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|x64.ActiveCfg = Release|x64
 		{A7C5E2C5-30E0-4B66-9DC1-320DEF5538C0}.Release|x64.Build.0 = Release|x64
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Debug|x64.Build.0 = Debug|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Release|x64.ActiveCfg = Release|Any CPU
+		{7A4F603B-EBAA-48E4-B674-0437458F5058}.Release|x64.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

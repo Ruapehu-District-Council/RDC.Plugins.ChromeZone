@@ -59,8 +59,8 @@
       <HintPath>..\packages\Microsoft.Web.WebView2.1.0.864.35\lib\net45\Microsoft.Web.WebView2.WinForms.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Origen.Ozone">
       <HintPath>..\packages\Origen.Ozone.exe</HintPath>
@@ -82,13 +82,23 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Core\InstallCheck.cs" />
+    <Compile Include="Core\Interfaces\IFieldConversion.cs" />
+    <Compile Include="Core\Interfaces\IFieldRule.cs" />
+    <Compile Include="Core\Interfaces\ISettingsWrapper.cs" />
+    <Compile Include="Core\Interfaces\IURLRule.cs" />
+    <Compile Include="Core\Interfaces\IWebTab.cs" />
     <Compile Include="Core\Logic.cs" />
     <Compile Include="Core\Objects\FieldConversion.cs" />
     <Compile Include="Core\Objects\FieldRule.cs" />
     <Compile Include="Core\Objects\SettingsWrapper.cs" />
     <Compile Include="Core\Objects\URLRule.cs" />
     <Compile Include="Core\Objects\WebTab.cs" />
-    <Compile Include="Core\Settings.cs" />
+    <Compile Include="DebugWindow.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="DebugWindow.Designer.cs">
+      <DependentUpon>DebugWindow.cs</DependentUpon>
+    </Compile>
     <Compile Include="DisplayComponents.cs">
       <SubType>UserControl</SubType>
     </Compile>
@@ -103,6 +113,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="DebugWindow.resx">
+      <DependentUpon>DebugWindow.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="DisplayComponents.resx">
       <DependentUpon>DisplayComponents.cs</DependentUpon>
     </EmbeddedResource>

@@ -11,18 +11,6 @@ namespace RDC.Plugins.ChromeZone.Core
 {
     public static class Logic
     {
-        public static int GetAttributeID(string baseString)
-        {
-            var ids = GetAttributeIDs(baseString);
-
-            if (ids.Count > 0)
-            {
-                return ids[0];
-            }
-
-            return -1;
-        }
-
         public static string GetAttributeField(string baseString)
         {
             var fields = GetAttributeFields(baseString);
@@ -85,7 +73,7 @@ namespace RDC.Plugins.ChromeZone.Core
             return Fields;
         }
 
-        public static string HandleFieldConversion(string fieldValue, FieldConversion conversion)
+        public static string HandleFieldConversion(string fieldValue,  Interfaces.IFieldConversion conversion)
         {
             try
             {

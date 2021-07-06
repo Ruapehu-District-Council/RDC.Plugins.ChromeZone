@@ -15,7 +15,11 @@ using System.Windows.Forms.VisualStyles;
 using System.Xml;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Web.WebView2.WinForms;
+using Newtonsoft.Json;
+using Origen.Ozone;
+using Origen.Ozone.Classes;
 using Origen.Ozone.Plugins;
+using RDC.Plugins.ChromeZone.Core.Interfaces;
 using RDC.Plugins.ChromeZone.Core.Objects;
 using ContentAlignment = System.Drawing.ContentAlignment;
 
@@ -25,14 +29,21 @@ namespace RDC.Plugins.ChromeZone
     {
         private WebView2 webView2;
 
+        public static Core.Objects.SettingsWrapper SettingsWrapper { get; set; }
+
         private bool HasNavigatedAway = false;
 
         private string AddressURL = string.Empty;
 
-        private string TabName = string.Empty;
+        private string TabName = "Unloaded";
 
         private string ScreenID;
         private string _Subject;
+
+        private bool Displaying = false;
+        private bool Debug = false;
+        private DebugWindow DebugWindow;
+        private List<string> DebugLogs = new List<string>();
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool SetDllDirectory(string lpPathName);
@@ -41,9 +52,9 @@ namespace RDC.Plugins.ChromeZone
         {
             get
             {
-                var CurrentTab = Core.Settings.SettingsWrapper.WebTabs.Find(t => t.Name == TabName);
+                var CurrentTab = SettingsWrapper.WebTabs.Find(t => t.Name == TabName);
 
-                return CurrentTab;
+                return (WebTab) CurrentTab;
             }
         }
 
@@ -51,7 +62,25 @@ namespace RDC.Plugins.ChromeZone
         {
             TryLoadSettings();
 
-            SetDllDirectory(Core.Settings.SettingsWrapper.WebView2FolderLocation);
+            LogDebugMessage($"WebView2Folder location: {SettingsWrapper.WebView2FolderLocation}");
+
+            if (Directory.Exists(SettingsWrapper.WebView2FolderLocation))
+            {
+                if (File.Exists(Path.Combine(SettingsWrapper.WebView2FolderLocation, "WebView2Loader.dll")) == false)
+                {
+                    LogDebugMessage($"Can't find WebView2Loader.dll in folder: {SettingsWrapper.WebView2FolderLocation}");
+                    return;
+                }
+                else
+                {
+                    SetDllDirectory(SettingsWrapper.WebView2FolderLocation);
+                }
+            }
+            else
+            {
+                LogDebugMessage($"WebView2Folder location not found!");
+                return;
+            }
 
             InitializeComponent();
 
@@ -66,7 +95,7 @@ namespace RDC.Plugins.ChromeZone
 
         private void TryLoadSettings()
         {
-            if (!Core.Settings.LoadSettings())
+            if (LoadSettings())
             {
                 return;
             }
@@ -77,23 +106,54 @@ namespace RDC.Plugins.ChromeZone
         {
             base.Initialize(InitData);
 
+            if (InitData.Contains("|"))
+            {
+                var parts = InitData.Split('|');
+                TabName = parts[0];
+
+                if (parts[1].ToLower() == "debug")
+                {
+                    Debug = true;
+                }
+            }
+            else
+            {
+                TabName = InitData;
+            }
+
+            Displaying = true;
+
+            if (Debug)
+            {
+                DebugWindow = new DebugWindow(DebugLogs);
+                DebugWindow.Show();
+                DebugWindow.SetTabName(TabName);
+            }
+
             if (webView2 == null)
             {
-                var label = new Label();
-                label.Dock = DockStyle.Fill;
-                label.Width = Int32.MaxValue;
-                label.Height = Int32.MaxValue;
-                label.TextAlign = ContentAlignment.MiddleCenter;
-                label.Text = "Issue Loading webview.";
-                label.Font = new Font(FontFamily.GenericSansSerif, 25, FontStyle.Bold);
-
+                LogDebugMessage($"WebView2 not loaded due to error!!");
+                var label = new Label
+                {
+                    Dock = DockStyle.Fill,
+                    Width = Int32.MaxValue,
+                    Height = Int32.MaxValue,
+                    TextAlign = ContentAlignment.MiddleCenter,
+                    Text = "Issue Loading webview.",
+                    Font = new Font(FontFamily.GenericSansSerif, 25, FontStyle.Bold),
+                    
+                };
                 toolStripContainer.ContentPanel.Controls.Add(label);
                 return;
             }
 
             //System.Diagnostics.Debugger.Launch();
 
-            TabName = InitData;
+            if (WebTab == null)
+            {
+                LogDebugMessage($"Tab name {TabName} Could not be found in setting file!");
+                return;
+            }
 
             AddressURL = WebTab.DefaultURL;
 
@@ -102,15 +162,11 @@ namespace RDC.Plugins.ChromeZone
                 AddressURL = InitData;
             }
 
-            if (WebTab == null)
-            {
-                return;
-            }
+            LogDebugMessage($"Default address: {AddressURL}");
 
             toolStripContainer.ContentPanel.Controls.Add(webView2);
             
             LoadCustomPage();
-            
         }
 
         //Setup the browser and it's dll directories 
@@ -119,16 +175,21 @@ namespace RDC.Plugins.ChromeZone
             var version = Core.InstallCheck.GetWebView2Version();
             if (version == String.Empty)
             {
+                LogDebugMessage("Couldn't find installed WebView on system!");
                 return;
             }
-            
+
+            LogDebugMessage($"found installed Web2 version {version}");
+
             webView2 = new WebView2();
 
             string DefaultLogFilePath = Path.Combine(Path.GetTempPath(), "OzoneWebVTemp");
+            LogDebugMessage($"Temp Directory for web files: {DefaultLogFilePath}");
 
             if (Directory.Exists(DefaultLogFilePath) == false)
             {
                 Directory.CreateDirectory(DefaultLogFilePath);
+                LogDebugMessage($"Created Temp Directory for web files in: {DefaultLogFilePath}");
             }
 
             try
@@ -140,6 +201,7 @@ namespace RDC.Plugins.ChromeZone
             catch (Exception e)
             {
                 System.Windows.Forms.MessageBox.Show(e.ToString());
+                LogDebugMessage($"Error creating WebView2 Environment: {e}");
                 throw;
             }
 
@@ -153,6 +215,11 @@ namespace RDC.Plugins.ChromeZone
 
         public override void RecordRefresh(string InitData = "")
         {
+            if (WebTab == null)
+            {
+                return;
+            }
+
             if (WebTab.RefreshOnRecordLoad)
             {
                 LoadCustomPage();
@@ -163,6 +230,11 @@ namespace RDC.Plugins.ChromeZone
         {
             ScreenID = FunctionID;
             _Subject = SubjectID;
+
+            if (WebTab == null)
+            {
+                return;
+            }
 
             if (WebTab.RefreshOnScreenChange)
             {
@@ -193,7 +265,10 @@ namespace RDC.Plugins.ChromeZone
                 return;
             }
 
-            webView2.CoreWebView2.Navigate(BuildCustomUrl(AddressURL));
+            var url = BuildCustomUrl(AddressURL);
+            LogDebugMessage($"Custom URL has been created. {url}");
+
+            webView2.CoreWebView2.Navigate(url);
             HasNavigatedAway = false;
         }
 
@@ -248,14 +323,18 @@ namespace RDC.Plugins.ChromeZone
                 attributeFields.ForEach(i =>
                 {
                     var replaceName = $"**{i}**";
-                    baseUrl = baseUrl.Replace(replaceName, GetRecordAttribute(i));
+                    var RecordAttribute = GetRecordAttribute(i);
+
+                    LogDebugMessage($"Record Value lookup found in URL: {i}, will be replaced with {RecordAttribute}");
+
+                    baseUrl = baseUrl.Replace(replaceName, RecordAttribute);
                 });
             }
 
             return baseUrl;
         }
 
-        private void HandleFieldConversions(IDictionary<string, string> adjustedValues, List<FieldConversion> fieldConversions)
+        private void HandleFieldConversions(IDictionary<string, string> adjustedValues, List<IFieldConversion> fieldConversions)
         {
             fieldConversions.ForEach(conversion =>
             {
@@ -290,7 +369,7 @@ namespace RDC.Plugins.ChromeZone
             });
         }
 
-        private void HandleFieldRules(IDictionary<string, string> adjustedValues, List<FieldRule> fieldRules)
+        private void HandleFieldRules(IDictionary<string, string> adjustedValues, List<IFieldRule> fieldRules)
         {
             fieldRules.ForEach(rule =>
             {
@@ -333,8 +412,8 @@ namespace RDC.Plugins.ChromeZone
                 }
                 else if (rule.FieldName.Contains("**"))
                 {
-                    var fieldId = Core.Logic.GetAttributeID(rule.FieldName);
-                    if (fieldId != -1)
+                    var fieldId = Core.Logic.GetAttributeField(rule.FieldName);
+                    if (fieldId != string.Empty)
                     {
                         if (adjustedValues.ContainsKey(rule.FieldName))
                         {
@@ -358,7 +437,7 @@ namespace RDC.Plugins.ChromeZone
             });
         }
 
-        private URLRule GetCustomUrl()
+        private IURLRule GetCustomUrl()
         {
             foreach (var rule in WebTab.URLRules)
             {
@@ -367,6 +446,7 @@ namespace RDC.Plugins.ChromeZone
                     case "BusinessObjectID":
                         if (BusinessObjectID == rule.Match)
                         {
+                            LogDebugMessage($"URL rule Matched BusinessObjectID = {rule.Match}, returning URL: {rule.URL}");
                             return rule;
                         }
                         break;
@@ -374,6 +454,7 @@ namespace RDC.Plugins.ChromeZone
                     case "ScreenID":
                         if (ScreenID == rule.Match)
                         {
+                            LogDebugMessage($"URL rule Matched ScreenID = {rule.Match}, returning URL: {rule.URL}");
                             return rule;
                         }
                         break;
@@ -381,6 +462,7 @@ namespace RDC.Plugins.ChromeZone
                     case "Subject":
                         if (Subject == rule.Match)
                         {
+                            LogDebugMessage($"URL rule Matched Subject = {rule.Match}, returning URL: {rule.URL}");
                             return rule;
                         }
                         break;
@@ -388,35 +470,6 @@ namespace RDC.Plugins.ChromeZone
             }
 
             return null;
-        }
-
-        private string GetRecordAttribute(int attributeNumber)
-        {
-            var result = string.Empty;
-
-            try
-            {
-                if (CommonBlock == null)
-                {
-                    return result;
-                }
-
-                var att = CommonBlock.CurrentRecord.GetAttribute(attributeNumber);
-
-                if (att != null && att.Count == 1 && att.Contains(1))
-                {
-                    var value = att[1].ToString();
-
-                    value = value.Replace("*", "-");
-                    return value;
-                }
-            }
-            catch
-            {
-
-            }
-
-            return result;
         }
 
         private string GetRecordAttribute(string dictionary)
@@ -467,10 +520,14 @@ namespace RDC.Plugins.ChromeZone
 
             if (WebTab.BlockRefreshAfterNavigateAway && HasNavigatedAway)
             {
+                LogDebugMessage($"BlockRefreshAfterNavigateAway is True, and page Has Navigated Away so will not change.");
                 return;
             }
 
-            webView2.CoreWebView2?.Navigate(BuildCustomUrl(AddressURL));
+            var url = BuildCustomUrl(AddressURL);
+            LogDebugMessage($"Custom URL has been created. {url}");
+
+            webView2.CoreWebView2?.Navigate(url);
         }
 
         private string BusinessObjectID
@@ -513,6 +570,54 @@ namespace RDC.Plugins.ChromeZone
             {
                 action.Invoke();
             }
+        }
+
+        public bool LoadSettings()
+        {
+            var value = System.Configuration.ConfigurationManager.AppSettings["ConfigFolderPath"];
+            var SettingsFile = Path.Combine(value, @"ChromeZoneSettings.json");
+
+            if (!File.Exists(SettingsFile))
+            {
+                LogDebugMessage($"Can't find settings file in: {SettingsFile}");
+                return false;
+            }
+
+            LogDebugMessage($"Loading settings file from: {SettingsFile}");
+
+            try
+            {
+                SettingsWrapper = JsonConvert.DeserializeObject<Core.Objects.SettingsWrapper>(File.ReadAllText(SettingsFile));
+            }
+            catch (Exception e)
+            {
+                LogDebugMessage($"Can't load settings files, error parsing file: {e}");
+                return false;
+            }
+
+            return true;
+        }
+
+        public void LogDebugMessage(string Message)
+        {
+            var builtMessage = $"({DateTime.Now}) Tab Name: {TabName}, Message: {Message}";
+
+            if (Displaying && DebugWindow != null)
+            {
+                try
+                {
+                    DebugWindow.AddDebugItem(builtMessage);
+                }
+                catch
+                {
+
+                }
+            }
+            else
+            {
+                DebugLogs.Add(builtMessage);
+            }
+            
         }
     }
 }
