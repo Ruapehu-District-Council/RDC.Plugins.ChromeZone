@@ -8,14 +8,14 @@ using RDC.Plugins.ChromeZone.Core.Interfaces;
 
 namespace ConfigApp.Objects
 {
-    [FormClass(DisplayName = "URL Rule", FormValueWidth = 200)]
+    [FormClass(DisplayName = "URL Rule")]
     public class URLRule
     {
         [FormField(ObjectTypeName = ObjectTypes.SpecialDropdown)]
         public string Field { get; set; }
         [FormField]
         public string Match { get; set; }
-        [FormField]
+        [FormField(ControlWidth = 300)]
         public string URL { get; set; }
 
         [FormField(Type = Types.NestedList, DisplayName = "Field Rules")]

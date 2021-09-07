@@ -97,6 +97,40 @@ namespace ConfigApp
 
                     afg.PopulateSpecialDropdown<Objects.URLRule>("Field", items);
                     afg.PopulateSpecialDropdown<Objects.FieldRule>("Operator", GetOperators());
+
+                    var FieldInserts = new List<FieldInsert>
+                    {
+                        new FieldInsert()
+                        {
+                            Value = "@@BusinessObjectID@@",
+                            ToolTip = "Record Business Object Name"
+                        },
+                        new FieldInsert()
+                        {
+                            Value = "@@RecordID@@",
+                            ToolTip = "Record ID"
+                        },
+                        new FieldInsert()
+                        {
+                            Value = "@@ScreenID@@",
+                            ToolTip = "Screen ID"
+                        },
+                        new FieldInsert()
+                        {
+                            Value = "@@Subject@@",
+                            ToolTip = "Record Subject"
+                        },
+                        new FieldInsert()
+                        {
+                            Value = "**{}**",
+                            ToolTip = "Replace {} with Dictionary from record EG: **CC.MAST.ID**"
+                        }
+
+                    };
+
+                    afg.PopulateFieldInsertItems<Objects.WebTab>("DefaultURL", FieldInserts);
+                    afg.PopulateFieldInsertItems<Objects.URLRule>("URL", FieldInserts);
+
                     ContentScrollViewer.Content = afgControl;
                 }
                 catch (Exception e)

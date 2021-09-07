@@ -9,7 +9,7 @@ using RDC.Plugins.ChromeZone.Core.Interfaces;
 
 namespace ConfigApp.Objects
 {
-    [FormClass(DisplayName = "Web Tab")]
+    [FormClass(DisplayName = "Web Tab", WindthOveride = true)]
     public class WebTab
     {
         [FormField]
@@ -20,7 +20,7 @@ namespace ConfigApp.Objects
         public bool RefreshOnRecordLoad { get; set; }
         [FormField(DisplayName = "Block Refresh After NavigateA way")]
         public bool BlockRefreshAfterNavigateAway { get; set; }
-        [FormField(DisplayName = "Default URL")]
+        [FormField(DisplayName = "Default URL", ControlWidth = 300)]
         public string DefaultURL { get; set; }
         [FormField(Type = Types.NestedList, DisplayName = "URL Rules")]
         public List<URLRule> URLRules { get; set; } = new List<URLRule>();
