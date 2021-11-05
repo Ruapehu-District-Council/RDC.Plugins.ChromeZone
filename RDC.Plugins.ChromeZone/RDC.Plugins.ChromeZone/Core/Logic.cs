@@ -4,6 +4,7 @@ using System.Drawing.Printing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using RDC.Plugins.ChromeZone.Core.Objects;
 
@@ -55,15 +56,15 @@ namespace RDC.Plugins.ChromeZone.Core
             var Fields = new List<string>();
             try
             {
-                var RecordFieldParts = baseString.Split(new[] { "**" }, StringSplitOptions.None);
+                Regex rg = new Regex(@"\*\*(.*?)\*\*");
 
-                for (int i = 0; RecordFieldParts.Length > i; i++)
+                MatchCollection matchedAuthors = rg.Matches(baseString);
+
+                foreach (Match matchedAuthor in matchedAuthors)
                 {
-                    i++;
-                    var attrName = RecordFieldParts[i];
-                    Fields.Add(attrName);
-                    i++;
+                    Fields.Add(matchedAuthor.Value.Replace("**", ""));
                 }
+
             }
             catch (Exception e)
             {
@@ -73,7 +74,7 @@ namespace RDC.Plugins.ChromeZone.Core
             return Fields;
         }
 
-        public static string HandleFieldConversion(string fieldValue,  Interfaces.IFieldConversion conversion)
+        public static string HandleFieldConversion(string fieldValue,  FieldConversion conversion)
         {
             try
             {

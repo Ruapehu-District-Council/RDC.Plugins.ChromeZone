@@ -59,8 +59,8 @@
       <HintPath>..\packages\Microsoft.Web.WebView2.1.0.864.35\lib\net45\Microsoft.Web.WebView2.WinForms.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Newtonsoft.Json, Version=13.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
-      <HintPath>..\packages\Newtonsoft.Json.13.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.2\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
     <Reference Include="Origen.Ozone">
       <HintPath>..\packages\Origen.Ozone.exe</HintPath>
@@ -90,9 +90,11 @@
     <Compile Include="Core\Logic.cs" />
     <Compile Include="Core\Objects\FieldConversion.cs" />
     <Compile Include="Core\Objects\FieldRule.cs" />
+    <Compile Include="Core\Objects\Rule.cs" />
     <Compile Include="Core\Objects\SettingsWrapper.cs" />
     <Compile Include="Core\Objects\URLRule.cs" />
     <Compile Include="Core\Objects\WebTab.cs" />
+    <Compile Include="Core\Operators.cs" />
     <Compile Include="DebugWindow.cs">
       <SubType>Form</SubType>
     </Compile>

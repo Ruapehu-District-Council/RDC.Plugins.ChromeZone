@@ -334,7 +334,7 @@ namespace RDC.Plugins.ChromeZone
             return baseUrl;
         }
 
-        private void HandleFieldConversions(IDictionary<string, string> adjustedValues, List<IFieldConversion> fieldConversions)
+        private void HandleFieldConversions(IDictionary<string, string> adjustedValues, List<FieldConversion> fieldConversions)
         {
             fieldConversions.ForEach(conversion =>
             {
@@ -369,7 +369,7 @@ namespace RDC.Plugins.ChromeZone
             });
         }
 
-        private void HandleFieldRules(IDictionary<string, string> adjustedValues, List<IFieldRule> fieldRules)
+        private void HandleFieldRules(IDictionary<string, string> adjustedValues, List<FieldRule> fieldRules)
         {
             fieldRules.ForEach(rule =>
             {
@@ -437,35 +437,46 @@ namespace RDC.Plugins.ChromeZone
             });
         }
 
-        private IURLRule GetCustomUrl()
+        private URLRule GetCustomUrl()
         {
             foreach (var rule in WebTab.URLRules)
             {
-                switch (rule.Field)
+                bool RuleMatch = true;
+                foreach (var ruleRule in rule.Rules)
                 {
-                    case "BusinessObjectID":
-                        if (BusinessObjectID == rule.Match)
-                        {
-                            LogDebugMessage($"URL rule Matched BusinessObjectID = {rule.Match}, returning URL: {rule.URL}");
-                            return rule;
-                        }
-                        break;
+                    string Value = "";
+                    switch (ruleRule.Field)
+                    {
+                        case "BusinessObjectID":
+                            Value = BusinessObjectID;
+                            break;
 
-                    case "ScreenID":
-                        if (ScreenID == rule.Match)
-                        {
-                            LogDebugMessage($"URL rule Matched ScreenID = {rule.Match}, returning URL: {rule.URL}");
-                            return rule;
-                        }
-                        break;
+                        case "ScreenID":
+                            Value = ScreenID;
+                            break;
 
-                    case "Subject":
-                        if (Subject == rule.Match)
-                        {
-                            LogDebugMessage($"URL rule Matched Subject = {rule.Match}, returning URL: {rule.URL}");
-                            return rule;
-                        }
-                        break;
+                        case "Subject":
+                            Value = Subject;
+                            break;
+                    }
+
+                    if (ruleRule.Field.StartsWith("**") && ruleRule.Field.EndsWith("**"))
+                    {
+                        var fieldName = Core.Logic.GetAttributeField(ruleRule.Field);
+                        Value = GetRecordAttribute(fieldName);
+                    }
+
+
+                    if (Core.Logic.HandleMatchFieldRules(Value, ruleRule.Operator, ruleRule.Match) == false)
+                    {
+                        RuleMatch = false;
+                    }
+                }
+
+                if (RuleMatch)
+                {
+                    LogDebugMessage($"returning URL: {rule.URL}");
+                    return rule;
                 }
             }
 

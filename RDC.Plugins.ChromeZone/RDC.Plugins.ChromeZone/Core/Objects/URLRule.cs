@@ -6,14 +6,12 @@ using System.Threading.Tasks;
 
 namespace RDC.Plugins.ChromeZone.Core.Objects
 {
-    public class URLRule : Interfaces.IURLRule
+    public class URLRule
     {
-
-        public string Field { get; set; }
-        public string Match { get; set; }
         public string URL { get; set; }
 
-        public List<Interfaces.IFieldRule> FieldRules { get; set; } = new List<Interfaces.IFieldRule>();
-        public List<Interfaces.IFieldConversion>FieldConversions { get; set; } = new List<Interfaces.IFieldConversion>();
+        public List<Rule> Rules { get; set; } = new List<Rule>();
+        public List<FieldRule> FieldRules { get; set; } = new List<FieldRule>();
+        public List<FieldConversion> FieldConversions { get; set; } = new List<FieldConversion>();
     }
 }

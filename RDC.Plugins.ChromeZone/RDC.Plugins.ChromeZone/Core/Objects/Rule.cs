@@ -6,11 +6,12 @@ using System.Threading.Tasks;
 
 namespace RDC.Plugins.ChromeZone.Core.Objects
 {
-    public class FieldRule
+    public class Rule
     {
-        public string FieldName { get; set; }
+
+        public string Field { get; set; }
+        public string Match { get; set; }
         public string Operator { get; set; }
-        public string Value { get; set; }
-        public string Result { get; set; }
+
     }
 }

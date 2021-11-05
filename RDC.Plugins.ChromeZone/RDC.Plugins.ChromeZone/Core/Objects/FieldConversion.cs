@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RDC.Plugins.ChromeZone.Core.Objects
 {
-    public class FieldConversion : Interfaces.IFieldConversion
+    public class FieldConversion
     {
         public string FieldName { get; set; }
         public string Type { get; set; }
