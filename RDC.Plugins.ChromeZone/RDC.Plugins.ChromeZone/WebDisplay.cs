@@ -9,6 +9,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography.X509Certificates;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
@@ -18,6 +19,7 @@ using Microsoft.Web.WebView2.WinForms;
 using Newtonsoft.Json;
 using Origen.Ozone;
 using Origen.Ozone.Classes;
+using Origen.Ozone.Classes.Function;
 using Origen.Ozone.Plugins;
 using RDC.Plugins.ChromeZone.Core.Interfaces;
 using RDC.Plugins.ChromeZone.Core.Objects;
@@ -284,7 +286,17 @@ namespace RDC.Plugins.ChromeZone
 
         private void refreshButton_Click(object sender, EventArgs e)
         {
-            webView2?.Refresh();
+            if ((Control.ModifierKeys & Keys.Control) == Keys.Control)
+            {
+                DebugWindow = new DebugWindow(DebugLogs);
+                DebugWindow.Show();
+                DebugWindow.SetTabName(TabName);
+            }
+            else
+            {
+                
+                webView2?.Refresh();
+            }
         }
 
         public string BuildCustomUrl(string baseUrl)
@@ -466,10 +478,15 @@ namespace RDC.Plugins.ChromeZone
                         Value = GetRecordAttribute(fieldName);
                     }
 
-
                     if (Core.Logic.HandleMatchFieldRules(Value, ruleRule.Operator, ruleRule.Match) == false)
                     {
                         RuleMatch = false;
+                        LogDebugMessage($"Rule {rule.URL}: {ruleRule.Field} {ruleRule.Operator} {ruleRule.Match} Didn't Match! Ignoring Rule!!");
+                        break;
+                    }
+                    else
+                    {
+                        LogDebugMessage($"Rule {rule.URL}: {ruleRule.Field} {ruleRule.Operator} {ruleRule.Match} Matched!");
                     }
                 }
 

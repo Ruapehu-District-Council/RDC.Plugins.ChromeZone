@@ -120,6 +120,7 @@ namespace RDC.Plugins.ChromeZone
             // urlTextBox
             // 
             this.urlTextBox.AutoSize = false;
+            this.urlTextBox.Font = new System.Drawing.Font("Segoe UI", 9F);
             this.urlTextBox.Name = "urlTextBox";
             this.urlTextBox.ReadOnly = true;
             this.urlTextBox.Size = new System.Drawing.Size(800, 25);
