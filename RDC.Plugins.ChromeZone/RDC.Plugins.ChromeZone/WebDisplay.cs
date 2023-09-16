@@ -196,7 +196,12 @@ namespace RDC.Plugins.ChromeZone
 
             try
             {
-                var env = await CoreWebView2Environment.CreateAsync(null, DefaultLogFilePath);
+                var options = new CoreWebView2EnvironmentOptions
+                {
+                    AllowSingleSignOnUsingOSPrimaryAccount = true
+                };
+
+                var env = await CoreWebView2Environment.CreateAsync(null, DefaultLogFilePath, options: options);
 
                 await webView2.EnsureCoreWebView2Async(env);
             }
