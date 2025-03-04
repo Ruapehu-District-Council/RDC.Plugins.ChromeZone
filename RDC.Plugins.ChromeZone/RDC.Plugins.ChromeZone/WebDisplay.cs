@@ -166,7 +166,6 @@ namespace RDC.Plugins.ChromeZone
 
             LogDebugMessage($"Default address: {AddressURL}");
 
-            toolStripContainer.ContentPanel.Controls.Add(webView2);
             
             LoadCustomPage();
         }
@@ -184,6 +183,13 @@ namespace RDC.Plugins.ChromeZone
             LogDebugMessage($"found installed Web2 version {version}");
 
             webView2 = new WebView2();
+
+            toolStripContainer.ContentPanel.Controls.Add(webView2);
+
+
+            webView2.Width = Int32.MaxValue;
+            webView2.Height = Int32.MaxValue;
+            webView2.Dock = DockStyle.Fill;
 
             string DefaultLogFilePath = Path.Combine(Path.GetTempPath(), "OzoneWebVTemp");
             LogDebugMessage($"Temp Directory for web files: {DefaultLogFilePath}");
@@ -214,10 +220,6 @@ namespace RDC.Plugins.ChromeZone
 
             webView2.NavigationStarting += WebView2_NavigationStarting;
             webView2.NavigationCompleted += WebView2OnNavigationCompleted;
-
-            webView2.Width = Int32.MaxValue;
-            webView2.Height = Int32.MaxValue;
-            webView2.Dock = DockStyle.Fill;
         }
 
         public override void RecordRefresh(string InitData = "")
